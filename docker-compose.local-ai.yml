@@ -1,0 +1,56 @@
+services:
+  # Text Embeddings Inference (TEI) - Fast embeddings on GPU
+  # Optimized for RTX 4070 (dev) and RTX 4880 (production)
+  tei-embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:89-1.8
+    container_name: tei-embeddings
+    ports:
+      - "8081:80"
+    environment:
+      - MODEL_ID=nomic-ai/nomic-embed-text-v1.5
+      - MAX_BATCH_TOKENS=16384
+      - MAX_CLIENT_BATCH_SIZE=128
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=0
+    volumes:
+      - tei-data:/data
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Chroma Vector Database
+  chroma:
+    image: chromadb/chroma:0.5.4
+    container_name: chroma-vectordb
+    ports:
+      - "8000:8000"
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - ALLOW_RESET=true
+      - IS_PERSISTENT=TRUE
+    volumes:
+      - chroma-data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  tei-data:
+    driver: local
+  chroma-data:
+    driver: local
