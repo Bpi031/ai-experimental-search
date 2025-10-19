@@ -25,9 +25,12 @@ func keywordSearchRepo(ctx context.Context, repoPath string, opts KeywordSearchO
     var re *regexp.Regexp
     var needle string
     if opts.UseRegex {
-        flags := 0
-        if !opts.CaseSensitive { flags = flags | regexp.IgnoreCase }
-        re, err = regexp.CompileOpts(opts.Query, flags)
+        pattern := opts.Query
+        if !opts.CaseSensitive {
+            // Use inline flag (?i) for case-insensitive matching in Go
+            pattern = "(?i)" + pattern
+        }
+        re, err = regexp.Compile(pattern)
         if err != nil { return nil, err }
     } else {
         needle = opts.Query
