@@ -120,6 +120,68 @@ Date:   Fri Nov 11 13:23:22 2016 +0100
 
 You can find this [example](_examples/log/main.go) and many others in the [examples](_examples) folder.
 
+AI search (experimental)
+------------------------
+
+go-git now includes an optional, Git-like AI search API for keyword and semantic code search under `github.com/go-git/go-git/v6/ai`.
+
+Requirements:
+
+- Keyword search: no external services required (local scan of HEAD tree)
+- Semantic search (embeddings):
+  - Local Text Embeddings Inference (TEI) at `http://localhost:8081`
+  - Local Chroma DB at `http://localhost:8000`
+  - Endpoints are configurable via env vars `AI_TEI_ENDPOINT` and `AI_CHROMA_URL`
+
+Quick usage example:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/go-git/go-git/v6/ai"
+)
+
+func main() {
+    r, _ := ai.Open(".")
+
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+    defer cancel()
+
+    // Index repository (HEAD) for semantic search
+    _ = r.Index(ctx)
+
+    // Keyword search
+    kwIter, _ := r.Search().Keyword(ctx, ai.KeywordSearchOptions{Query: "CloneOptions", TopK: 10})
+    _ = kwIter.ForEach(func(sr *ai.SearchResult) error {
+        fmt.Printf("KW: %s:%d %q\n", sr.Chunk.FilePath, sr.Chunk.StartLine, sr.Chunk.Content)
+        return nil
+    })
+
+    // Semantic search (requires TEI + Chroma running)
+    semIter, _ := r.Search().Semantic(ctx, ai.SemanticSearchOptions{Query: "clone repository", TopK: 5, Rerank: true})
+    _ = semIter.ForEach(func(sr *ai.SearchResult) error {
+        fmt.Printf("SEM: %.3f %s:%d-%d\n", sr.Score, sr.Chunk.FilePath, sr.Chunk.StartLine, sr.Chunk.EndLine)
+        return nil
+    })
+}
+```
+
+Examples:
+
+- [`_examples/ai/search`](./_examples/ai/search) – keyword + semantic in one program
+- [`_examples/ai/semantic`](./_examples/ai/semantic) – minimal semantic-only example
+
+Setup docs for local embeddings and vector DB:
+
+- [AI Docs Index](AI_DOCS_INDEX.md)
+- [Quick Start: Hybrid (local embeddings + cloud LLM)](QUICK_START_HYBRID.md)
+- [Local GPU setup (TEI + Chroma)](LOCAL_GPU_SETUP.md)
+
 Contribute
 ----------
 
