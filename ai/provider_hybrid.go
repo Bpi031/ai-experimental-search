@@ -143,19 +143,54 @@ func (h *HybridProvider) buildChunksForFile(ctx context.Context, repoPath, commi
 
 // SemanticSearch embeds the query and retrieves topK results from Chroma, optionally reranking with TEI.
 func (h *HybridProvider) SemanticSearch(ctx context.Context, repoPath string, query string, topK int, rerank bool) ([]SearchResult, error) {
-    if err := h.ensureCollection(ctx, safeCollectionName(repoPath)); err != nil { return nil, err }
+    results := make([]SearchResult, 0, topK)
+    err := h.SemanticSearchStreaming(ctx, repoPath, query, topK, rerank, func(sr SearchResult) error {
+        results = append(results, sr)
+        return nil
+    })
+    return results, err
+}
+
+// SemanticSearchStreaming emits results progressively as they're retrieved and reranked.
+// This enables GitHub Copilot-style progressive rendering and early cancellation.
+func (h *HybridProvider) SemanticSearchStreaming(ctx context.Context, repoPath string, query string, topK int, rerank bool, emit func(SearchResult) error) error {
+    if err := h.ensureCollection(ctx, safeCollectionName(repoPath)); err != nil { return err }
+    
+    // Check cancellation before expensive embed
+    select {
+    case <-ctx.Done():
+        return ctx.Err()
+    default:
+    }
+    
     qemb, err := h.tei.Embed(ctx, []string{query})
-    if err != nil { return nil, err }
+    if err != nil { return err }
+    
+    // Check cancellation before query
+    select {
+    case <-ctx.Done():
+        return ctx.Err()
+    default:
+    }
+    
     qr, err := h.chroma.Query(ctx, h.collectionID, qemb, topK)
-    if err != nil { return nil, err }
-    if len(qr.Documents) == 0 { return nil, nil }
+    if err != nil { return err }
+    if len(qr.Documents) == 0 { return nil }
 
     // Flatten first query results set
     docs := qr.Documents[0]
     metas := qr.Metadatas[0]
     dists := qr.Distances[0]
+    
+    // Emit results progressively (VSCode Copilot pattern)
     results := make([]SearchResult, len(docs))
     for i := range docs {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        default:
+        }
+        
         chunk := DocumentChunk{
             ID:        safeString(qr.IDs[0], i),
             RepoPath:  strMeta(metas[i], "repo_path"),
@@ -169,22 +204,40 @@ func (h *HybridProvider) SemanticSearch(ctx context.Context, repoPath string, qu
             Meta:      convertMeta(metas[i]),
             CreatedAt: time.Now().UTC(),
         }
-        // Convert distance to score; assume distance is cosine distance 1 - cos_sim
         score := 1.0 - dists[i]
         results[i] = SearchResult{Chunk: chunk, Score: score}
+        
+        // Emit immediately if no reranking (progressive results)
+        if !rerank {
+            if err := emit(results[i]); err != nil {
+                return err
+            }
+        }
     }
 
+    // If reranking, do it in batch then emit sorted results
     if rerank && len(results) > 1 {
         items := make([]RerankItem, len(results))
         for i := range results { items[i] = RerankItem{Text: results[i].Chunk.Content} }
         items, err = h.tei.Rerank(ctx, query, items)
         if err == nil {
             for i := range results { results[i].Score = items[i].Score }
-            // Simple sort by score desc
             sortByScoreDesc(results)
         }
+        // Emit reranked results
+        for i := range results {
+            select {
+            case <-ctx.Done():
+                return ctx.Err()
+            default:
+            }
+            if err := emit(results[i]); err != nil {
+                return err
+            }
+        }
     }
-    return results, nil
+    
+    return nil
 }
 
 func safeCollectionName(repoPath string) string {

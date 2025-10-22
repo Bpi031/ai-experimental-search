@@ -12,26 +12,37 @@ import (
     "github.com/go-git/go-git/v6/plumbing/object"
 )
 
+// keywordSearchRepo is the internal implementation that returns all results in-memory.
+// For streaming, use keywordSearchRepoStreaming.
 func keywordSearchRepo(ctx context.Context, repoPath string, opts KeywordSearchOptions) ([]SearchResult, error) {
+    results := make([]SearchResult, 0, opts.TopK)
+    err := keywordSearchRepoStreaming(ctx, repoPath, opts, func(sr SearchResult) error {
+        results = append(results, sr)
+        return nil
+    })
+    return results, err
+}
+
+// keywordSearchRepoStreaming emits results to a callback as they're found, for VSCode Copilot-style responsiveness.
+func keywordSearchRepoStreaming(ctx context.Context, repoPath string, opts KeywordSearchOptions, emit func(SearchResult) error) error {
     repo, err := gogit.PlainOpen(repoPath)
-    if err != nil { return nil, err }
+    if err != nil { return err }
     headRef, err := repo.Head()
-    if err != nil { return nil, err }
+    if err != nil { return err }
     commit, err := repo.CommitObject(headRef.Hash())
-    if err != nil { return nil, err }
+    if err != nil { return err }
     tree, err := commit.Tree()
-    if err != nil { return nil, err }
+    if err != nil { return err }
 
     var re *regexp.Regexp
     var needle string
     if opts.UseRegex {
         pattern := opts.Query
         if !opts.CaseSensitive {
-            // Use inline flag (?i) for case-insensitive matching in Go
             pattern = "(?i)" + pattern
         }
         re, err = regexp.Compile(pattern)
-        if err != nil { return nil, err }
+        if err != nil { return err }
     } else {
         needle = opts.Query
         if !opts.CaseSensitive { needle = strings.ToLower(needle) }
@@ -39,10 +50,14 @@ func keywordSearchRepo(ctx context.Context, repoPath string, opts KeywordSearchO
 
     capK := opts.TopK
     if capK <= 0 { capK = 50 }
-    results := make([]SearchResult, 0, capK)
     count := 0
 
     err = tree.Files().ForEach(func(f *object.File) error {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        default:
+        }
         if skipPath(f.Name) { return nil }
         r, err := f.Reader()
         if err != nil { return nil }
@@ -76,16 +91,17 @@ func keywordSearchRepo(ctx context.Context, repoPath string, opts KeywordSearchO
                     Meta:       map[string]string{"match": opts.Query},
                     CreatedAt:  time.Now().UTC(),
                 }
-                // Assign a naive score based on line length (shorter lines rank higher slightly)
                 score := 1.0 / float64(1+len(line))
-                results = append(results, SearchResult{Chunk: chunk, Score: score})
+                if err := emit(SearchResult{Chunk: chunk, Score: score}); err != nil {
+                    return err
+                }
                 count++
-                if count >= capK { return nil }
+                if count >= capK { return io.EOF }
             }
             lineNo++
         }
         return nil
     })
-    if err != nil { return nil, err }
-    return results, nil
+    if err == io.EOF { return nil }
+    return err
 }

@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -31,22 +33,33 @@ type chromaCollection struct {
 
 func (c *ChromaClient) EnsureCollection(ctx context.Context, name string) (string, error) {
 	// Try to get existing, else create
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/v1/collections?name="+name, nil)
+	escName := url.QueryEscape(name)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/v1/collections?name="+escName, nil)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	// Read body fully to support flexible decoding
 	if resp.StatusCode == 200 {
-		var out struct {
-			Collections []chromaCollection `json:"collections"`
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		// Try single-object shape
+		var one chromaCollection
+		if err := json.Unmarshal(data, &one); err == nil && one.ID != "" {
+			return one.ID, nil
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&out); err == nil {
-			if len(out.Collections) > 0 {
-				return out.Collections[0].ID, nil
-			}
+		// Try wrapper shape {"collections":[...]}
+		var wrap struct{ Collections []chromaCollection `json:"collections"` }
+		if err := json.Unmarshal(data, &wrap); err == nil && len(wrap.Collections) > 0 {
+			return wrap.Collections[0].ID, nil
 		}
+		// fallthrough to create
+	} else {
+		// Ensure body closed for non-200
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
 	}
+
 	// Create
 	body, _ := json.Marshal(map[string]any{"name": name})
 	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/v1/collections", bytes.NewReader(body))
@@ -55,15 +68,40 @@ func (c *ChromaClient) EnsureCollection(ctx context.Context, name string) (strin
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		return "", fmt.Errorf("chroma create collection failed: %s", resp.Status)
+	if resp.StatusCode == 200 || resp.StatusCode == 201 {
+		var out chromaCollection
+		if err := json.NewDecoder(resp.Body).Decode(&out); err == nil && out.ID != "" {
+			resp.Body.Close()
+			return out.ID, nil
+		}
+		// Drain and proceed to GET fallback
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	} else {
+		// Drain body and try GET fallback (collection may already exist)
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
 	}
-	var out chromaCollection
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+
+	// Fallback: GET again; if collection exists now, return it
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/v1/collections?name="+escName, nil)
+	resp, err = c.http.Do(req)
+	if err != nil {
 		return "", err
 	}
-	return out.ID, nil
+	defer resp.Body.Close()
+	if resp.StatusCode == 200 {
+		data, _ := io.ReadAll(resp.Body)
+		var one chromaCollection
+		if err := json.Unmarshal(data, &one); err == nil && one.ID != "" {
+			return one.ID, nil
+		}
+		var wrap struct{ Collections []chromaCollection `json:"collections"` }
+		if err := json.Unmarshal(data, &wrap); err == nil && len(wrap.Collections) > 0 {
+			return wrap.Collections[0].ID, nil
+		}
+	}
+	return "", fmt.Errorf("chroma create collection failed: collection not available after create attempt")
 }
 
 type UpsertItem struct {
