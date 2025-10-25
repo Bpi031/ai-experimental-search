@@ -71,6 +71,9 @@ type Repository struct {
 
 	r  map[string]*Remote
 	wt billy.Filesystem
+
+	// aiProvider holds the optional AI search/edit provider
+	aiProvider interface{}
 }
 
 type initOptions struct {

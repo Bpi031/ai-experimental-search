@@ -123,17 +123,19 @@ You can find this [example](_examples/log/main.go) and many others in the [examp
 AI search (experimental)
 ------------------------
 
-go-git now includes an optional, Git-like AI search API for keyword and semantic code search under `github.com/go-git/go-git/v6/ai`.
+go-git now includes AI-powered code search with a **Git-like API** - use AI search just like `Commit()`, `Push()`, or `Log()`.
 
 Requirements:
 
-- Keyword search: no external services required (local scan of HEAD tree)
-- Semantic search (embeddings):
+- **Keyword search**: no external services required (local scan of HEAD tree)
+- **Semantic search** (AI-powered embeddings):
   - Local Text Embeddings Inference (TEI) at `http://localhost:9000`
   - Local Chroma DB at `http://localhost:9001`
-  - Endpoints are configurable via env vars `AI_TEI_ENDPOINT` and `AI_CHROMA_URL`
+  - Endpoints configurable via `AI_TEI_ENDPOINT` and `AI_CHROMA_URL`
 
-Quick usage example:
+### Git-like API (Recommended)
+
+Use AI search directly on the standard `Repository` object:
 
 ```go
 package main
@@ -141,38 +143,73 @@ package main
 import (
     "context"
     "fmt"
-    "time"
 
+    git "github.com/go-git/go-git/v6"
     "github.com/go-git/go-git/v6/ai"
 )
 
 func main() {
-    r, _ := ai.Open(".")
-
-    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-    defer cancel()
-
-    // Index repository (HEAD) for semantic search
-    _ = r.Index(ctx)
-
-    // Keyword search
-    kwIter, _ := r.Search().Keyword(ctx, ai.KeywordSearchOptions{Query: "CloneOptions", TopK: 10})
+    ctx := context.Background()
+    
+    // Open repository (standard go-git)
+    repo, _ := git.PlainOpen(".")
+    
+    // Index for AI search (like git add)
+    _ = repo.AIIndex(ctx)
+    
+    // Keyword search (like git grep)
+    kwIter, _ := repo.AIKeywordSearch(ctx, ai.KeywordSearchOptions{
+        Query: "CloneOptions",
+        TopK:  10,
+    })
     _ = kwIter.ForEach(func(sr *ai.SearchResult) error {
-        fmt.Printf("KW: %s:%d %q\n", sr.Chunk.FilePath, sr.Chunk.StartLine, sr.Chunk.Content)
+        fmt.Printf("  %s:%d - %s\n", sr.Chunk.FilePath, sr.Chunk.StartLine, sr.Chunk.Content)
         return nil
     })
-
-    // Semantic search (requires TEI + Chroma running)
-    semIter, _ := r.Search().Semantic(ctx, ai.SemanticSearchOptions{Query: "clone repository", TopK: 5, Rerank: true})
+    
+    // Semantic search (like git log --grep, but AI-powered)
+    semIter, _ := repo.AISemanticSearch(ctx, ai.SemanticSearchOptions{
+        Query:  "clone repository",
+        TopK:   5,
+        Rerank: true,
+    })
     _ = semIter.ForEach(func(sr *ai.SearchResult) error {
-        fmt.Printf("SEM: %.3f %s:%d-%d\n", sr.Score, sr.Chunk.FilePath, sr.Chunk.StartLine, sr.Chunk.EndLine)
+        fmt.Printf("  %.3f %s:%d-%d\n", sr.Score, sr.Chunk.FilePath, sr.Chunk.StartLine, sr.Chunk.EndLine)
         return nil
     })
+    
+    // Mix with standard Git operations
+    ref, _ := repo.Head()
+    commits, _ := repo.Log(&git.LogOptions{From: ref.Hash()})
+    // ... use commits iterator
+}
+```
+
+### Standalone AI API (Alternative)
+
+You can also use the `ai` package directly:
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/go-git/go-git/v6/ai"
+)
+
+func main() {
+    ctx := context.Background()
+    r, _ := ai.Open(".")
+    
+    _ = r.Index(ctx)
+    results, _ := r.Search().Keyword(ctx, ai.KeywordSearchOptions{Query: "Clone", TopK: 10})
+    // ... use results
 }
 ```
 
 Examples:
 
+- [`_examples/ai/git-like`](./_examples/ai/git-like) – **Git-like API** with standard repo operations
 - [`_examples/ai/search`](./_examples/ai/search) – keyword + semantic in one program
 - [`_examples/ai/semantic`](./_examples/ai/semantic) – minimal semantic-only example
 
