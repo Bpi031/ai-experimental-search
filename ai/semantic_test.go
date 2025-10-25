@@ -22,7 +22,7 @@ func isUp(url string) bool {
 }
 
 func TestSemanticSearch_IndexAndQuery(t *testing.T) {
-    tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
+    tei := getenv("AI_TEI_ENDPOINT", "http://localhost:9000")
     chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
     if !isUp(tei) || !isUp(chroma) {
         t.Skipf("TEI (%s) or Chroma (%s) not reachable; skipping semantic test", tei, chroma)

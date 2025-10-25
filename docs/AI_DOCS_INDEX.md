@@ -157,7 +157,7 @@ export OPENAI_API_KEY="sk-..."  # or GOOGLE_API_KEY or ANTHROPIC_API_KEY
 docker-compose -f docker-compose.local-ai.yml up -d
 
 # 3. Verify (1 min)
-curl http://localhost:8081/health
+curl http://localhost:9000/health
 curl http://localhost:8000/api/v1/heartbeat
 
 # 4. Done! See QUICK_START_HYBRID.md for Go code examples
@@ -175,7 +175,7 @@ ollama serve &
 ollama pull qwen2.5-coder:7b
 
 # 3. Verify (1 min)
-curl http://localhost:8081/health
+curl http://localhost:9000/health
 curl http://localhost:8000/api/v1/heartbeat
 curl http://localhost:11434/api/tags
 

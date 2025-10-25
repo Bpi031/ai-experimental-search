@@ -40,7 +40,7 @@ ollama pull qwen2.5-coder:7b
 
 ```bash
 # Test embedding service
-curl http://localhost:8081/embed \
+curl http://localhost:9000/embed \
   -X POST \
   -d '{"inputs":"test code"}' \
   -H 'Content-Type: application/json'
@@ -93,7 +93,7 @@ func main() {
     
     // Create LOCAL AI provider (no API keys!)
     provider, err := git.NewLocalLangChainProvider(git.LocalProviderOptions{
-        TEIEndpoint:   "http://localhost:8081",
+        TEIEndpoint:   "http://localhost:9000",
         ChromaURL:     "http://localhost:8000",
         OllamaURL:     "http://localhost:11434",
         OllamaModel:   "qwen2.5-coder:7b",

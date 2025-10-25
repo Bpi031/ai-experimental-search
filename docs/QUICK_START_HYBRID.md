@@ -60,7 +60,7 @@ docker-compose -f docker-compose.local-ai.yml logs -f
 
 ```bash
 # Test local embedding service
-curl http://localhost:8081/embed \
+curl http://localhost:9000/embed \
   -X POST \
   -d '{"inputs":"test code"}' \
   -H 'Content-Type: application/json'

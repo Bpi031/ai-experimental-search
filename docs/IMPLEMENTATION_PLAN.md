@@ -284,7 +284,7 @@ docker run -p 8000:8000 chromadb/chroma
 # See LOCAL_GPU_SETUP.md for full guide
 
 # Start local embedding service (GPU accelerated)
-docker run -d --gpus all -p 8081:80 \
+docker run -d --gpus all -p 9000:80 \
   -v ~/text-embeddings-models:/data \
   ghcr.io/huggingface/text-embeddings-inference:89-1.8 \
   --model-id nomic-ai/nomic-embed-text-v1.5

@@ -75,7 +75,7 @@ docker pull ghcr.io/huggingface/text-embeddings-inference:89-1.8
 docker run -d \
   --name tei-embeddings \
   --gpus all \
-  -p 8081:80 \
+  -p 9000:80 \
   -v ~/text-embeddings-models:/data \
   ghcr.io/huggingface/text-embeddings-inference:89-1.8 \
   --model-id nomic-ai/nomic-embed-text-v1.5 \
@@ -83,12 +83,12 @@ docker run -d \
   --max-concurrent-requests 512
 
 # Verify it's running (wait 30 sec for model download)
-curl http://localhost:8081/health
+curl http://localhost:9000/health
 ```
 
 **Test embedding generation:**
 ```bash
-curl http://localhost:8081/embed \
+curl http://localhost:9000/embed \
   -X POST \
   -d '{"inputs":"function handleRequest() {}"}' \
   -H 'Content-Type: application/json'
@@ -279,7 +279,7 @@ func NewHybridLangChainProvider(opts HybridProviderOptions) (*LangChainProvider,
 
 type HybridProviderOptions struct {
     // Local services (GPU accelerated)
-    TEIEndpoint   string // default: http://localhost:8081
+    TEIEndpoint   string // default: http://localhost:9000
     ChromaURL     string // default: http://localhost:8000
     Namespace     string // default: go-git-code
     
@@ -291,7 +291,7 @@ type HybridProviderOptions struct {
 
 func NewHybridWithOpenAI() (*LangChainProvider, error) {
     return NewHybridLangChainProvider(HybridProviderOptions{
-        TEIEndpoint: "http://localhost:8081",
+        TEIEndpoint: "http://localhost:9000",
         ChromaURL:   "http://localhost:8000",
         Namespace:   "go-git-code",
         LLMProvider: "openai",
@@ -300,7 +300,7 @@ func NewHybridWithOpenAI() (*LangChainProvider, error) {
 
 func NewHybridWithGemini() (*LangChainProvider, error) {
     return NewHybridLangChainProvider(HybridProviderOptions{
-        TEIEndpoint: "http://localhost:8081",
+        TEIEndpoint: "http://localhost:9000",
         ChromaURL:   "http://localhost:8000",
         Namespace:   "go-git-code",
         LLMProvider: "gemini",
@@ -309,7 +309,7 @@ func NewHybridWithGemini() (*LangChainProvider, error) {
 
 func NewHybridWithClaude() (*LangChainProvider, error) {
     return NewHybridLangChainProvider(HybridProviderOptions{
-        TEIEndpoint: "http://localhost:8081",
+        TEIEndpoint: "http://localhost:9000",
         ChromaURL:   "http://localhost:8000",
         Namespace:   "go-git-code",
         LLMProvider: "claude",
@@ -444,7 +444,7 @@ func main() {
     
     // Full control over configuration
     provider, _ := git.NewHybridLangChainProvider(git.HybridProviderOptions{
-        TEIEndpoint: "http://localhost:8081",  // Local GPU embeddings
+        TEIEndpoint: "http://localhost:9000",  // Local GPU embeddings
         ChromaURL:   "http://localhost:8000",  // Local vector DB
         Namespace:   "my-project",
         LLMProvider: "openai",                 // Cloud LLM
@@ -461,7 +461,7 @@ func main() {
 
 ```bash
 # Check TEI (local embeddings)
-curl http://localhost:8081/health
+curl http://localhost:9000/health
 # Expected: {"status":"ok"}
 
 # Check Chroma (local vector DB)
@@ -532,12 +532,12 @@ docker stop tei-embeddings
 
 ```bash
 # Check what's using ports
-lsof -i :8081  # TEI
+lsof -i :9000  # TEI
 lsof -i :8000  # Chroma
 lsof -i :11434 # Ollama
 
 # Change ports if needed:
-docker run -p 9081:80 ... # Use 9081 instead of 8081
+docker run -p 9081:80 ... # Use 9081 instead of 9000
 ```
 
 ## Advanced: Multi-GPU Support
@@ -563,7 +563,7 @@ services:
     image: ghcr.io/huggingface/text-embeddings-inference:89-1.8
     container_name: tei-embeddings
     ports:
-      - "8081:80"
+      - "9000:80"
     volumes:
       - ~/text-embeddings-models:/data
     environment:
@@ -615,7 +615,7 @@ ollama pull qwen2.5-coder:7b
 
 ### For Maximum Speed (Small Models)
 ```bash
-docker run --gpus all -p 8081:80 -v ~/models:/data \
+docker run --gpus all -p 9000:80 -v ~/models:/data \
   ghcr.io/huggingface/text-embeddings-inference:89-1.8 \
   --model-id jinaai/jina-embeddings-v2-base-code \
   --max-batch-tokens 32768  # Increase batch size for tiny model
@@ -623,7 +623,7 @@ docker run --gpus all -p 8081:80 -v ~/models:/data \
 
 ### For Maximum Quality (Large Models)
 ```bash
-docker run --gpus all -p 8081:80 -v ~/models:/data \
+docker run --gpus all -p 9000:80 -v ~/models:/data \
   ghcr.io/huggingface/text-embeddings-inference:89-1.8 \
   --model-id Alibaba-NLP/gte-Qwen2-7B-instruct \
   --max-batch-tokens 8192  # Reduce for large model

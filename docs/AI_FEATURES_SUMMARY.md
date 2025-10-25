@@ -34,7 +34,7 @@ go get github.com/go-git/go-git/v6
 
 ```bash
 # 1. Start local embedding service (GPU accelerated)
-docker run -d --gpus all -p 8081:80 \
+docker run -d --gpus all -p 9000:80 \
   -v ~/text-embeddings-models:/data \
   ghcr.io/huggingface/text-embeddings-inference:89-1.8 \
   --model-id nomic-ai/nomic-embed-text-v1.5

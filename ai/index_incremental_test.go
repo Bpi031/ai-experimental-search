@@ -11,7 +11,7 @@ import (
 )
 
 func TestIndex_AfterNewCommit(t *testing.T) {
-    tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
+    tei := getenv("AI_TEI_ENDPOINT", "http://localhost:9000")
     chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
     if !isUp(tei) || !isUp(chroma) {
         t.Skip("TEI/Chroma not available")
