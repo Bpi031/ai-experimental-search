@@ -47,7 +47,7 @@ curl http://localhost:9000/embed \
 # Should return: {"embeddings":[[0.123, -0.456, ...]]}
 
 # Test vector database
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 # Should return: {"nanosecond heartbeat": ...}
 
 # Test LLM
@@ -94,7 +94,7 @@ func main() {
     // Create LOCAL AI provider (no API keys!)
     provider, err := git.NewLocalLangChainProvider(git.LocalProviderOptions{
         TEIEndpoint:   "http://localhost:9000",
-        ChromaURL:     "http://localhost:8000",
+        ChromaURL:     "http://localhost:9001",
         OllamaURL:     "http://localhost:11434",
         OllamaModel:   "qwen2.5-coder:7b",
         Namespace:     "my-repo",

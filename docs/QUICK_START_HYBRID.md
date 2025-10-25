@@ -67,7 +67,7 @@ curl http://localhost:9000/embed \
 # Should return: {"embeddings":[[0.123, -0.456, ...]]}
 
 # Test local vector database
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 # Should return: {"nanosecond heartbeat": ...}
 
 # Test cloud LLM (OpenAI example)

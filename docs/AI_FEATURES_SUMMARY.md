@@ -20,7 +20,7 @@ Two AI-powered features for go-git using LangChain Go:
 
 ```bash
 # 1. Start vector database (Chroma)
-docker run -p 8000:8000 chromadb/chroma
+docker run -p 9001:9001 chromadb/chroma
 
 # 2. Install dependencies
 cd /path/to/your/go/project
@@ -40,7 +40,7 @@ docker run -d --gpus all -p 9000:80 \
   --model-id nomic-ai/nomic-embed-text-v1.5
 
 # 2. Start vector database
-docker run -d -p 8000:8000 -v ~/chroma-data:/chroma/chroma chromadb/chroma
+docker run -d -p 9001:9001 -v ~/chroma-data:/chroma/chroma chromadb/chroma
 
 # 3. Install and start Ollama (local LLM)
 brew install ollama
@@ -69,7 +69,7 @@ func main() {
     // Setup AI provider (Cloud)
     provider, _ := git.NewLangChainProvider(
         "your-openai-api-key",
-        "http://localhost:8000",  // Chroma URL
+        "http://localhost:9001",  // Chroma URL
     )
     repo.SetAIProvider(provider)
     

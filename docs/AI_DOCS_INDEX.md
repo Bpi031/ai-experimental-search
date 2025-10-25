@@ -158,7 +158,7 @@ docker-compose -f docker-compose.local-ai.yml up -d
 
 # 3. Verify (1 min)
 curl http://localhost:9000/health
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 
 # 4. Done! See QUICK_START_HYBRID.md for Go code examples
 ```
@@ -176,7 +176,7 @@ ollama pull qwen2.5-coder:7b
 
 # 3. Verify (1 min)
 curl http://localhost:9000/health
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 curl http://localhost:11434/api/tags
 
 # 4. Done! See QUICK_START_LOCAL.md for Go code examples

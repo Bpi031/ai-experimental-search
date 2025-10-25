@@ -132,9 +132,9 @@ func main() {
         log.Fatal(err)
     }
     
-    // 2. Create vector store (Chroma running on localhost:8000)
+    // 2. Create vector store (Chroma running on localhost:9001)
     store, err := chroma.New(
-        chroma.WithChromaURL("http://localhost:8000"),
+        chroma.WithChromaURL("http://localhost:9001"),
         chroma.WithEmbedder(embedder),
         chroma.WithNameSpace("my-git-repo"),
     )
@@ -231,7 +231,7 @@ func main() {
 
 ```bash
 # Start Chroma vector database
-docker run -p 8000:8000 chromadb/chroma
+docker run -p 9001:9001 chromadb/chroma
 
 # That's it! Now you can use it
 ```

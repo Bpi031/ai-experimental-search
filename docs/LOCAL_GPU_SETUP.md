@@ -111,12 +111,12 @@ With RTX 5880 (48GB VRAM):
 # Start Chroma with persistent storage
 docker run -d \
   --name chroma-vectordb \
-  -p 8000:8000 \
+  -p 9001:9001 \
   -v ~/chroma-data:/chroma/chroma \
   chromadb/chroma
 
 # Verify
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 ```
 
 ### Option B: Qdrant (More Features)
@@ -280,7 +280,7 @@ func NewHybridLangChainProvider(opts HybridProviderOptions) (*LangChainProvider,
 type HybridProviderOptions struct {
     // Local services (GPU accelerated)
     TEIEndpoint   string // default: http://localhost:9000
-    ChromaURL     string // default: http://localhost:8000
+    ChromaURL     string // default: http://localhost:9001
     Namespace     string // default: go-git-code
     
     // Cloud LLM
@@ -292,7 +292,7 @@ type HybridProviderOptions struct {
 func NewHybridWithOpenAI() (*LangChainProvider, error) {
     return NewHybridLangChainProvider(HybridProviderOptions{
         TEIEndpoint: "http://localhost:9000",
-        ChromaURL:   "http://localhost:8000",
+        ChromaURL:   "http://localhost:9001",
         Namespace:   "go-git-code",
         LLMProvider: "openai",
     })
@@ -301,7 +301,7 @@ func NewHybridWithOpenAI() (*LangChainProvider, error) {
 func NewHybridWithGemini() (*LangChainProvider, error) {
     return NewHybridLangChainProvider(HybridProviderOptions{
         TEIEndpoint: "http://localhost:9000",
-        ChromaURL:   "http://localhost:8000",
+        ChromaURL:   "http://localhost:9001",
         Namespace:   "go-git-code",
         LLMProvider: "gemini",
     })
@@ -310,7 +310,7 @@ func NewHybridWithGemini() (*LangChainProvider, error) {
 func NewHybridWithClaude() (*LangChainProvider, error) {
     return NewHybridLangChainProvider(HybridProviderOptions{
         TEIEndpoint: "http://localhost:9000",
-        ChromaURL:   "http://localhost:8000",
+        ChromaURL:   "http://localhost:9001",
         Namespace:   "go-git-code",
         LLMProvider: "claude",
     })
@@ -445,7 +445,7 @@ func main() {
     // Full control over configuration
     provider, _ := git.NewHybridLangChainProvider(git.HybridProviderOptions{
         TEIEndpoint: "http://localhost:9000",  // Local GPU embeddings
-        ChromaURL:   "http://localhost:8000",  // Local vector DB
+        ChromaURL:   "http://localhost:9001",  // Local vector DB
         Namespace:   "my-project",
         LLMProvider: "openai",                 // Cloud LLM
     })
@@ -465,7 +465,7 @@ curl http://localhost:9000/health
 # Expected: {"status":"ok"}
 
 # Check Chroma (local vector DB)
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 # Expected: {"nanosecond heartbeat":...}
 ```
 
@@ -533,7 +533,7 @@ docker stop tei-embeddings
 ```bash
 # Check what's using ports
 lsof -i :9000  # TEI
-lsof -i :8000  # Chroma
+lsof -i :9001  # Chroma
 lsof -i :11434 # Ollama
 
 # Change ports if needed:
@@ -582,7 +582,7 @@ services:
     image: chromadb/chroma
     container_name: chroma-vectordb
     ports:
-      - "8000:8000"
+      - "9001:9001"
     volumes:
       - ~/chroma-data:/chroma/chroma
     environment:

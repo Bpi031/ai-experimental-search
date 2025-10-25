@@ -14,7 +14,7 @@ This will:
 - ✅ Check Docker and GPU availability
 - ✅ Pull required images (~2-3GB on first run)
 - ✅ Start TEI (embeddings) on port 8081
-- ✅ Start Chroma (vector DB) on port 8000
+- ✅ Start Chroma (vector DB) on port 9001
 - ✅ Wait for services to be ready
 
 ### 2. Test Services
@@ -121,11 +121,11 @@ docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi
 
 ### Port already in use
 
-If ports 8081 or 8000 are in use:
+If ports 9000 or 9001 are in use:
 ```bash
 # Find what's using the ports
 sudo lsof -i :8081
-sudo lsof -i :8000
+sudo lsof -i :9001
 
 # Stop other services or modify docker-compose.local-ai.yml
 ```

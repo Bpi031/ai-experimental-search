@@ -14,7 +14,7 @@ LLM modifies code, track changes, undo/redo
 
 ```bash
 # Start Chroma vector database
-docker run -p 8000:8000 chromadb/chroma
+docker run -p 9001:9001 chromadb/chroma
 
 # Set OpenAI API key
 export OPENAI_API_KEY="your-key-here"
@@ -123,7 +123,7 @@ type FileEdit struct {
 // Create provider
 provider, err := git.NewLangChainProvider(
     os.Getenv("OPENAI_API_KEY"),
-    "http://localhost:8000",  // Chroma URL
+    "http://localhost:9001",  // Chroma URL
 )
 
 // Index repository (one-time, ~1 min for medium repo)
@@ -193,7 +193,7 @@ func main() {
     // Setup
     provider, _ := git.NewLangChainProvider(
         os.Getenv("OPENAI_API_KEY"),
-        "http://localhost:8000",
+        "http://localhost:9001",
     )
     provider.IndexRepository(ctx, ".")
     repo.SetAIProvider(provider)

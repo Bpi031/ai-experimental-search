@@ -704,7 +704,7 @@ if errors.Is(err, context.Canceled) {
 AI_TEI_ENDPOINT=http://localhost:8081
 
 # Vector database
-AI_CHROMA_URL=http://localhost:8000
+AI_CHROMA_URL=http://localhost:9001
 
 # Optional customization
 AI_EMBEDDINGS_SOURCE=local-tei  # or "openai"
@@ -716,7 +716,7 @@ AI_VECTOR_DB=chroma             # or "qdrant", "memory"
 ```go
 cfg := ai.Config{
     TEIEndpoint: "http://custom-tei:8081",
-    ChromaURL:   "http://custom-chroma:8000",
+    ChromaURL:   "http://custom-chroma:9001",
 }
 provider := ai.NewHybridProvider(cfg)
 repo, _ := ai.Open(".")

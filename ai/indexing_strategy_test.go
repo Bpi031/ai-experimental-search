@@ -13,7 +13,7 @@ import (
 // TestIndexing_FirstUse validates explicit indexing on first use.
 func TestIndexing_FirstUse(t *testing.T) {
 	tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
-	chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
+	chroma := getenv("AI_CHROMA_URL", "http://localhost:9001")
 	if !isUp(tei) || !isUp(chroma) {
 		t.Skip("TEI/Chroma not available")
 	}
@@ -66,7 +66,7 @@ func TestIndexing_FirstUse(t *testing.T) {
 // TestIndexing_LazyAutoIndex validates auto-indexing on first semantic search.
 func TestIndexing_LazyAutoIndex(t *testing.T) {
 	tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
-	chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
+	chroma := getenv("AI_CHROMA_URL", "http://localhost:9001")
 	if !isUp(tei) || !isUp(chroma) {
 		t.Skip("TEI/Chroma not available")
 	}

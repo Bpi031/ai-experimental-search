@@ -82,7 +82,7 @@ docker-compose -f docker-compose.cpu.yml down
 Your test output shows:
 ```
 === RUN   TestSemanticSearch_IndexAndQuery
-    semantic_test.go:28: TEI (http://localhost:8081) or Chroma (http://localhost:8000) 
+    semantic_test.go:28: TEI (http://localhost:8081) or Chroma (http://localhost:9001) 
                          not reachable; skipping semantic test
 --- SKIP: TestSemanticSearch_IndexAndQuery (0.00s)
 ```
@@ -147,7 +147,7 @@ curl -X POST http://localhost:8081/embed \
   -d '{"inputs":["test"]}'
 
 # Test Chroma
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:9001/api/v1/heartbeat
 ```
 
 ---

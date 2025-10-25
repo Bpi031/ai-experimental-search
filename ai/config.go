@@ -7,7 +7,7 @@ import (
 // Config controls how embeddings, vector DB, and LLM are wired.
 // Defaults:
 // - Embeddings: local TEI at http://localhost:9000
-// - Vector DB: local Chroma at http://localhost:8000
+// - Vector DB: local Chroma at http://localhost:9001
 // - LLM: cloud API (OpenAI) if OPENAI_API_KEY is set; otherwise unset
 // You can override via environment variables below.
 type Config struct {
@@ -17,7 +17,7 @@ type Config struct {
 
     // Vector DB
     VectorDB   string // "chroma" | "qdrant" | "memory"
-    ChromaURL  string // default: http://localhost:8000
+    ChromaURL  string // default: http://localhost:9001
     QdrantURL  string // optional
 
     // LLM provider (default: cloud)
@@ -41,7 +41,7 @@ func Default() Config {
         TEIEndpoint:      getenv("AI_TEI_ENDPOINT", "http://localhost:9000"),
 
         VectorDB:  getenv("AI_VECTOR_DB", "chroma"),
-        ChromaURL: getenv("AI_CHROMA_URL", "http://localhost:8000"),
+        ChromaURL: getenv("AI_CHROMA_URL", "http://localhost:9001"),
         QdrantURL: getenv("AI_QDRANT_URL", ""),
 
         LLMProvider:  getenv("AI_LLM_PROVIDER", defaultLLMProvider()),

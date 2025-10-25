@@ -385,7 +385,7 @@ if branchName == "main" {
 export AI_TEI_ENDPOINT=http://localhost:8081
 
 # Vector database (required for semantic search)
-export AI_CHROMA_URL=http://localhost:8000
+export AI_CHROMA_URL=http://localhost:9001
 
 # Optional: Customize embedding model
 export AI_EMBEDDINGS_SOURCE=local-tei  # or "openai"

@@ -276,7 +276,7 @@ require (
 ### Cloud Setup (OpenAI + Chroma)
 ```bash
 # Start Chroma
-docker run -p 8000:8000 chromadb/chroma
+docker run -p 9001:9001 chromadb/chroma
 ```
 
 ### Local GPU Setup (RTX 5880) - **RECOMMENDED**
@@ -290,7 +290,7 @@ docker run -d --gpus all -p 9000:80 \
   --model-id nomic-ai/nomic-embed-text-v1.5
 
 # Start local vector DB
-docker run -d -p 8000:8000 -v ~/chroma-data:/chroma/chroma chromadb/chroma
+docker run -d -p 9001:9001 -v ~/chroma-data:/chroma/chroma chromadb/chroma
 
 ```
 
@@ -315,7 +315,7 @@ func main() {
     // Create AI provider (LangChain + OpenAI)
     provider, _ := git.NewLangChainProvider(
         "your-openai-key",
-        "http://localhost:8000",
+        "http://localhost:9001",
     )
     
     // Index repository (one-time, ~1 min for medium repo)

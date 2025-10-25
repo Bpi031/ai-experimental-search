@@ -130,7 +130,7 @@ Requirements:
 - Keyword search: no external services required (local scan of HEAD tree)
 - Semantic search (embeddings):
   - Local Text Embeddings Inference (TEI) at `http://localhost:9000`
-  - Local Chroma DB at `http://localhost:8000`
+  - Local Chroma DB at `http://localhost:9001`
   - Endpoints are configurable via env vars `AI_TEI_ENDPOINT` and `AI_CHROMA_URL`
 
 Quick usage example:

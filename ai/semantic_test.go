@@ -23,7 +23,7 @@ func isUp(url string) bool {
 
 func TestSemanticSearch_IndexAndQuery(t *testing.T) {
     tei := getenv("AI_TEI_ENDPOINT", "http://localhost:9000")
-    chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
+    chroma := getenv("AI_CHROMA_URL", "http://localhost:9001")
     if !isUp(tei) || !isUp(chroma) {
         t.Skipf("TEI (%s) or Chroma (%s) not reachable; skipping semantic test", tei, chroma)
     }
@@ -56,7 +56,7 @@ func getenv(k, def string) string {
 // TestSemanticSearch_StreamingProgressive validates VSCode Copilot-style progressive emission.
 func TestSemanticSearch_StreamingProgressive(t *testing.T) {
     tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
-    chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
+    chroma := getenv("AI_CHROMA_URL", "http://localhost:9001")
     if !isUp(tei) || !isUp(chroma) {
         t.Skip("TEI/Chroma not available")
     }
@@ -94,7 +94,7 @@ func TestSemanticSearch_StreamingProgressive(t *testing.T) {
 // TestSemanticSearch_ContextCancellation ensures streaming respects context cancellation.
 func TestSemanticSearch_ContextCancellation(t *testing.T) {
     tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
-    chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
+    chroma := getenv("AI_CHROMA_URL", "http://localhost:9001")
     if !isUp(tei) || !isUp(chroma) {
         t.Skip("TEI/Chroma not available")
     }
@@ -131,7 +131,7 @@ func TestSemanticSearch_ContextCancellation(t *testing.T) {
 // TestVectorStoreRetriever_LangChainStyle validates the LangChain-style retriever API.
 func TestVectorStoreRetriever_LangChainStyle(t *testing.T) {
     tei := getenv("AI_TEI_ENDPOINT", "http://localhost:8081")
-    chroma := getenv("AI_CHROMA_URL", "http://localhost:8000")
+    chroma := getenv("AI_CHROMA_URL", "http://localhost:9001")
     if !isUp(tei) || !isUp(chroma) {
         t.Skip("TEI/Chroma not available")
     }

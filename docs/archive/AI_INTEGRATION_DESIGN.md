@@ -1267,7 +1267,7 @@ func main() {
 	// Create LangChain provider with Chroma vector store
 	provider, err := git.NewLangChainProvider(
 		"your-openai-api-key",
-		"http://localhost:8000", // Chroma server URL
+		"http://localhost:9001", // Chroma server URL
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -1302,7 +1302,7 @@ LangChain Go supports 10+ vector stores out of the box:
 
 | Vector Store | Best For | Setup |
 |--------------|----------|-------|
-| **Chroma** | Local development, prototyping | Run Docker: `docker run -p 8000:8000 chromadb/chroma` |
+| **Chroma** | Local development, prototyping | Run Docker: `docker run -p 9001:9001 chromadb/chroma` |
 | **Qdrant** | Production, on-premise | Cloud or self-hosted |
 | **Pinecone** | Managed cloud, scale | Sign up at pinecone.io |
 | **Weaviate** | Rich schema, hybrid search | Cloud or self-hosted |
@@ -1318,7 +1318,7 @@ LangChain Go supports 10+ vector stores out of the box:
 ```go
 // Use Chroma (local)
 store, _ := chroma.New(
-	chroma.WithChromaURL("http://localhost:8000"),
+	chroma.WithChromaURL("http://localhost:9001"),
 	chroma.WithEmbedder(embedder),
 )
 
