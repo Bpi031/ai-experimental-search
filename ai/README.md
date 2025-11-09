@@ -1,10 +1,19 @@
-# AI-Powered Code Search API
+# AI-Powered Git Repository API
 
-This package provides three powerful search capabilities for Git repositories:
+This package provides comprehensive AI-powered capabilities for Git repositories, combining code search with intelligent code manipulation:
 
+## Core Capabilities
+
+### 🔍 **Search & Analysis**
 1. **Keyword Search** - Fast text-based search (like `grep`)
 2. **Semantic Search** - AI-powered understanding of code meaning
 3. **Code Embedding** - Vector representations for similarity matching
+4. **Symbol Analysis** - Go code intelligence (functions, types, references)
+
+### ✏️ **Code Modification** (New!)
+5. **File Operations** - Safe file creation, editing, and deletion with confirmation
+6. **Git Operations** - AI-assisted commits, branch management, diff, blame, history
+7. **Security Scanning** - Secret detection and dependency analysis
 
 ---
 
@@ -16,11 +25,30 @@ import "github.com/go-git/go-git/v6/ai"
 // Open repository
 repo, _ := ai.Open("/path/to/repo")
 
-// Keyword search (instant, no indexing needed)
+// 🔍 SEARCH - Keyword search (instant, no indexing needed)
 results, _ := ai.KeywordSearchRepo(ctx, "/path/to/repo", "OAuth", 10)
 
-// Semantic search (auto-indexes on first use)
+// 🔍 SEARCH - Semantic search (auto-indexes on first use)
 results, _ := ai.SemanticSearchRepo(ctx, "/path/to/repo", "authentication logic", 10, false)
+
+// 🧠 ANALYSIS - Analyze Go code symbols
+symbols, _ := repo.GetSymbols(ctx, ai.GetSymbolsOptions{FilePath: "main.go"})
+refs, _ := repo.FindReferences(ctx, ai.FindReferencesOptions{SymbolName: "UserAuth"})
+
+// ✏️ MODIFY - Edit files safely with confirmation
+op, _ := repo.EditFile(ctx, ai.EditFileOptions{
+    FilePath: "config.go",
+    Content:  "package config\n\nconst Version = \"2.0\"",
+})
+repo.ApplyFileOperation(op) // Apply after confirmation
+
+// 🔒 SECURITY - Scan for secrets
+result, _ := repo.ScanForSecrets(ctx, ai.ScanOptions{})
+fmt.Printf("Found %d secrets\n", len(result.Findings))
+
+// 📝 GIT - Smart commits with AI-generated messages
+commitResult, _ := repo.CommitChanges(ctx, ai.CommitOptions{})
+fmt.Printf("Committed: %s\n", commitResult.Message)
 ```
 
 ---
@@ -342,37 +370,516 @@ if branchName == "main" {
 
 ---
 
+## 4. Symbol Analysis (New!)
+
+Go code intelligence with AST parsing for functions, types, and references.
+
+### Features
+
+- ✅ **Symbol extraction** - Functions, methods, structs, interfaces, variables, constants
+- ✅ **Reference finding** - Find all usages of a symbol across repository
+- ✅ **Definition lookup** - Jump to symbol definition
+- ✅ **Documentation extraction** - Include doc comments
+- ✅ **Multi-file analysis** - Scan entire repository or specific files
+- ✅ **Generic support** - Handles Go 1.18+ generics
+
+### API
+
+#### Get Symbols
+
+```go
+repo, _ := ai.Open("/path/to/repo")
+
+// Get all symbols from a file
+symbols, err := repo.GetSymbols(ctx, ai.GetSymbolsOptions{
+    FilePath:    "main.go",
+    IncludeDocs: true,
+})
+
+for _, sym := range symbols {
+    fmt.Printf("%s: %s at %s:%d\n", sym.Type, sym.Name, sym.FilePath, sym.Line)
+}
+
+// Filter by symbol type
+symbols, _ = repo.GetSymbols(ctx, ai.GetSymbolsOptions{
+    SymbolTypes: []ai.SymbolType{ai.SymbolTypeFunction, ai.SymbolTypeMethod},
+})
+
+// Scan entire repository
+symbols, _ = repo.GetSymbols(ctx, ai.GetSymbolsOptions{}) // All files
+```
+
+#### Find References
+
+```go
+// Find all usages of a symbol
+refs, err := repo.FindReferences(ctx, ai.FindReferencesOptions{
+    SymbolName: "AuthenticateUser",
+})
+
+for _, ref := range refs {
+    fmt.Printf("%s:%d - %s\n", ref.FilePath, ref.Line, ref.Context)
+}
+
+// Limit to specific file
+refs, _ = repo.FindReferences(ctx, ai.FindReferencesOptions{
+    SymbolName: "TokenRefresh",
+    FilePath:   "auth/tokens.go",
+})
+```
+
+#### Get Definition
+
+```go
+// Find where a symbol is defined
+def, err := repo.GetDefinition(ctx, "UserRepository")
+if err == nil {
+    fmt.Printf("Defined in %s at line %d\n", def.FilePath, def.Line)
+    fmt.Printf("Signature: %s\n", def.Signature)
+    fmt.Printf("Documentation: %s\n", def.DocComment)
+}
+```
+
+### Symbol Types
+
+```go
+const (
+    SymbolTypeFunction   = "function"
+    SymbolTypeMethod     = "method"
+    SymbolTypeStruct     = "struct"
+    SymbolTypeInterface  = "interface"
+    SymbolTypeVariable   = "variable"
+    SymbolTypeConstant   = "constant"
+    SymbolTypeType       = "type"
+    SymbolTypeImport     = "import"
+)
+```
+
+### Use Cases
+
+- **IDE features** - Go to definition, find references
+- **Code navigation** - Explore unfamiliar codebases
+- **Refactoring** - Find all usages before renaming
+- **Documentation** - Extract API surface
+- **Code analysis** - Build dependency graphs
+
+---
+
+## 5. File Modification (New!)
+
+Safe file operations with confirmation workflow for AI agents.
+
+### Features
+
+- ✅ **Create files** - With automatic directory creation
+- ✅ **Edit files** - Full content replacement or line-range edits
+- ✅ **Delete files** - With safety checks
+- ✅ **Confirmation workflow** - Preview changes before applying
+- ✅ **Operation descriptions** - Human-readable change summaries
+
+### API
+
+#### Create Files
+
+```go
+repo, _ := ai.Open("/path/to/repo")
+
+// Create new file (with confirmation by default)
+op, err := repo.CreateFile(ctx, ai.CreateFileOptions{
+    FilePath: "config/database.go",
+    Content:  "package config\n\nconst DBHost = \"localhost\"",
+})
+
+// Preview the operation
+fmt.Println(op.Description)
+// Output: Create new file: config/database.go
+//         Size: 47 bytes
+//         Lines: 3
+
+// Apply after confirmation
+err = repo.ApplyFileOperation(op)
+```
+
+#### Edit Files
+
+```go
+// Replace entire file
+op, err := repo.EditFile(ctx, ai.EditFileOptions{
+    FilePath: "main.go",
+    Content:  newFileContent,
+})
+
+// Edit specific line ranges
+op, err = repo.EditFile(ctx, ai.EditFileOptions{
+    FilePath: "auth.go",
+    LineRanges: []ai.LineEdit{
+        {StartLine: 10, EndLine: 15, NewText: "// Updated implementation\nfunc Auth() { ... }"},
+        {StartLine: 25, EndLine: 25, NewText: "const MaxRetries = 5"},
+    },
+})
+
+// Create file if missing
+op, err = repo.EditFile(ctx, ai.EditFileOptions{
+    FilePath:        "config.go",
+    Content:         defaultConfig,
+    CreateIfMissing: true,
+})
+```
+
+#### Delete Files
+
+```go
+// Delete file (with confirmation)
+op, err := repo.DeleteFile(ctx, ai.DeleteFileOptions{
+    FilePath: "old_config.go",
+})
+
+// Review before applying
+if op.NeedsConfirm {
+    fmt.Println(op.Description) // "Delete file: old_config.go (1234 bytes)"
+    repo.ApplyFileOperation(op)
+}
+```
+
+#### Skip Confirmation (for batch operations)
+
+```go
+// Disable confirmation for automated workflows
+fm := ai.NewFileModifier("/path/to/repo")
+fm.RequireConfirmation = false
+
+op, _ := fm.CreateFile(ctx, ai.CreateFileOptions{...})
+// File created immediately, no manual confirmation needed
+```
+
+### Use Cases
+
+- **AI code editors** - GitHub Copilot, Cursor-style editing
+- **Code generation** - Create files from templates
+- **Refactoring tools** - Safe bulk modifications
+- **CI/CD automation** - Generate configuration files
+
+---
+
+## 6. Git Operations (New!)
+
+Git read operations (diff, blame, history) and write operations (commit, branch) with AI assistance.
+
+### Features
+
+- ✅ **Diff** - Compare commits or working tree
+- ✅ **Blame** - Line-by-line authorship
+- ✅ **History** - Commit logs with filtering
+- ✅ **Smart commits** - AI-generated commit messages
+- ✅ **Branch management** - Create, delete, checkout branches
+- ✅ **Safety checks** - Prevent destructive operations
+
+### API
+
+#### Git Diff
+
+```go
+repo, _ := ai.Open("/path/to/repo")
+
+// Diff between commits
+diffs, err := repo.GetDiff(ctx, ai.DiffOptions{
+    FromCommit: "abc123",
+    ToCommit:   "def456",
+})
+
+for _, d := range diffs {
+    fmt.Printf("%s: +%d -%d\n", d.FilePath, d.Additions, d.Deletions)
+    fmt.Println(d.Diff) // Unified diff format
+}
+
+// Diff with working tree
+diffs, _ = repo.GetDiff(ctx, ai.DiffOptions{
+    FromCommit: "HEAD",
+    // ToCommit empty = working tree
+})
+
+// Limit diff size
+diffs, _ = repo.GetDiff(ctx, ai.DiffOptions{
+    FromCommit: "HEAD~1",
+    ToCommit:   "HEAD",
+    MaxLines:   50, // Truncate large diffs
+})
+```
+
+#### Git Blame
+
+```go
+// Get line-by-line authorship
+blameLines, err := repo.GetBlame(ctx, ai.BlameOptions{
+    FilePath: "main.go",
+})
+
+for _, line := range blameLines {
+    fmt.Printf("Line %d: %s (%s) - %s\n",
+        line.LineNumber, line.Author, line.Date.Format("2006-01-02"), line.Text)
+}
+
+// Blame at specific commit
+blameLines, _ = repo.GetBlame(ctx, ai.BlameOptions{
+    FilePath: "config.go",
+    Commit:   "abc123",
+})
+```
+
+#### Git History
+
+```go
+// Get commit history
+commits, err := repo.GetHistory(ctx, ai.HistoryOptions{
+    MaxCount: 50,
+})
+
+for _, c := range commits {
+    fmt.Printf("%s: %s by %s\n", c.ShortHash, c.Message, c.Author)
+}
+
+// Filter by file
+commits, _ = repo.GetHistory(ctx, ai.HistoryOptions{
+    FilePath: "auth/user.go",
+    MaxCount: 20,
+})
+
+// Filter by author
+commits, _ = repo.GetHistory(ctx, ai.HistoryOptions{
+    Author:   "alice@example.com",
+    MaxCount: 100,
+})
+```
+
+#### Smart Commits (AI-Generated Messages)
+
+```go
+// Commit with auto-generated message
+result, err := repo.CommitChanges(ctx, ai.CommitOptions{})
+// Message generated based on file changes:
+// "feat: add user authentication module"
+// "chore: update dependencies"
+// "docs: improve README examples"
+
+fmt.Printf("Committed %s: %s\n", result.Hash, result.Message)
+fmt.Printf("Files changed: %v\n", result.FilesChanged)
+
+// Custom commit message
+result, _ = repo.CommitChanges(ctx, ai.CommitOptions{
+    Message:     "fix: resolve token expiration bug",
+    AuthorName:  "Alice",
+    AuthorEmail: "alice@example.com",
+})
+
+// Allow empty commits
+result, _ = repo.CommitChanges(ctx, ai.CommitOptions{
+    Message:    "chore: trigger CI",
+    AllowEmpty: true,
+})
+```
+
+#### Branch Management
+
+```go
+// Create branch
+branchResult, err := repo.CreateBranch(ctx, ai.BranchOptions{
+    Name:     "feature/new-auth",
+    Checkout: true, // Switch to new branch
+})
+
+// Create from specific commit
+branchResult, _ = repo.CreateBranch(ctx, ai.BranchOptions{
+    Name:       "hotfix/security",
+    FromCommit: "abc123",
+})
+
+// Force recreate branch
+branchResult, _ = repo.CreateBranch(ctx, ai.BranchOptions{
+    Name:  "develop",
+    Force: true, // Overwrite if exists
+})
+
+// Delete branch
+err = repo.DeleteBranch(ctx, "old-feature", false)
+```
+
+### Convenience Methods
+
+```go
+// Quick commit (auto-message, no confirmation)
+hash, err := repo.QuickCommit(ctx, "")
+
+// Quick history (last 10 commits)
+commits, err := repo.QuickHistory(ctx)
+```
+
+### Use Cases
+
+- **AI coding assistants** - GitHub Copilot commit messages
+- **Code review tools** - Automated diff analysis
+- **Git automation** - Smart branch workflows
+- **Developer tools** - Enhanced git blame, history
+
+---
+
+## 7. Security Scanning (New!)
+
+Detect secrets, credentials, and analyze dependencies.
+
+### Features
+
+- ✅ **Secret detection** - 11+ common secret patterns
+- ✅ **Secret redaction** - Safe display of findings
+- ✅ **Dependency analysis** - Parse go.mod, package.json, requirements.txt
+- ✅ **Severity levels** - High, medium, low
+- ✅ **File filtering** - Scan specific files or patterns
+
+### API
+
+#### Scan for Secrets
+
+```go
+repo, _ := ai.Open("/path/to/repo")
+
+// Scan entire repository
+result, err := repo.ScanForSecrets(ctx, ai.ScanOptions{})
+
+fmt.Printf("Found %d secrets\n", result.SecretsFound)
+fmt.Printf("High severity: %d\n", result.HighSeverity)
+
+for _, finding := range result.Findings {
+    fmt.Printf("[%s] %s in %s:%d\n",
+        finding.Severity, finding.Type, finding.FilePath, finding.Line)
+    fmt.Printf("Redacted: %s\n", finding.Redacted) // Safe to display
+}
+
+// Scan specific file
+result, _ = repo.ScanForSecrets(ctx, ai.ScanOptions{
+    FilePath: "config.yaml",
+})
+
+// Exclude directories
+result, _ = repo.ScanForSecrets(ctx, ai.ScanOptions{
+    ExcludePatterns: []string{"vendor/", "node_modules/", ".git/"},
+})
+
+// Add custom patterns
+result, _ = repo.ScanForSecrets(ctx, ai.ScanOptions{
+    CustomPatterns: []ai.SecretPattern{
+        {
+            Name:     "Custom API Key",
+            Pattern:  regexp.MustCompile(`CUSTOM_KEY_[A-Z0-9]{32}`),
+            Severity: "high",
+        },
+    },
+})
+```
+
+#### Secret Patterns Detected
+
+- AWS Access Keys (AKIA...)
+- AWS Secret Keys
+- GitHub Tokens (ghp_..., gho_...)
+- OpenAI API Keys (sk-...)
+- Private Keys (-----BEGIN PRIVATE KEY-----)
+- JWT Tokens
+- Database URLs (postgres://, mysql://)
+- Generic API Keys
+- Passwords in configs
+- Google API Keys (AIza...)
+- Slack Tokens (xoxb-...)
+
+#### Analyze Dependencies
+
+```go
+// Parse dependency files
+deps, err := repo.AnalyzeDependencies(ctx)
+
+for _, dep := range deps {
+    fmt.Printf("%s@%s (%s from %s)\n",
+        dep.Name, dep.Version, dep.Type, dep.Source)
+}
+```
+
+**Supported formats:**
+- `go.mod` (Go modules)
+- `package.json` (npm/Node.js)
+- `requirements.txt` (Python pip)
+
+#### Convenience Method
+
+```go
+// Quick security scan
+summary, err := repo.QuickSecurityScan(ctx)
+fmt.Printf("Secrets: %d | Dependencies: %d\n",
+    len(summary.Secrets), len(summary.Dependencies))
+```
+
+### Use Cases
+
+- **Security audits** - Find leaked credentials
+- **CI/CD gates** - Block commits with secrets
+- **Compliance** - Ensure no sensitive data in repos
+- **Dependency tracking** - Monitor external packages
+
+---
+
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Application Layer                     │
-│  (CLI, IDE Extension, Web API, RAG System)              │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                        Application Layer                            │
+│  (CLI, IDE Extension, Web API, AI Coding Assistant, RAG System)   │
+└────────────────────────────────────────────────────────────────────┘
                           │
-         ┌────────────────┼────────────────┐
-         │                │                │
-         ▼                ▼                ▼
-┌─────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Keyword   │  │   Semantic   │  │  Embedding   │
-│   Search    │  │    Search    │  │   Provider   │
-│  (Local)    │  │ (Chroma DB)  │  │    (TEI)     │
-└─────────────┘  └──────────────┘  └──────────────┘
-         │                │                │
-         └────────────────┼────────────────┘
+         ┌────────────────┼──────────────────────────┐
+         │                │                          │
+         ▼                ▼                          ▼
+┌─────────────────┐  ┌─────────────────┐  ┌──────────────────┐
+│  SEARCH & AI    │  │  CODE MODIFY    │  │  GIT OPS         │
+├─────────────────┤  ├─────────────────┤  ├──────────────────┤
+│ • Keyword       │  │ • File Ops      │  │ • Diff/Blame     │
+│ • Semantic      │  │ • Symbol        │  │ • Smart Commit   │
+│ • Embeddings    │  │   Analysis      │  │ • Branch Mgmt    │
+│ • Vector DB     │  │ • Security      │  │ • History        │
+└─────────────────┘  └─────────────────┘  └──────────────────┘
+         │                │                          │
+         └────────────────┼──────────────────────────┘
                           ▼
-                  ┌──────────────┐
-                  │   go-git     │
-                  │  Repository  │
-                  └──────────────┘
+        ┌──────────────────────────────────────┐
+        │    ai.Repository (Unified Interface) │
+        └──────────────────────────────────────┘
+                          ▼
+        ┌──────────────────────────────────────┐
+        │    go-git (Git Operations Layer)     │
+        └──────────────────────────────────────┘
+                          ▼
+        ┌──────────────────────────────────────┐
+        │  External Services (Optional)         │
+        │  • TEI (Embeddings)                   │
+        │  • Chroma DB (Vector Store)           │
+        └──────────────────────────────────────┘
 ```
 
 ### Components
 
+**Search & AI:**
 - **Keyword Search** - Pure Go, no dependencies
+- **Semantic Search** - TEI + Chroma DB for vector similarity
+- **Symbol Analysis** - Go AST parsing for code intelligence
+
+**Code Modification:**
+- **File Modifier** - Safe file operations with confirmation
+- **Security Scanner** - Secret detection, dependency analysis
+
+**Git Operations:**
+- **Git Reader** - Diff, blame, history
+- **Git Writer** - Smart commits, branch management
+
+**Infrastructure:**
 - **TEI (Text Embeddings Inference)** - HuggingFace embedding server
 - **Chroma DB** - Vector database for semantic search
-- **go-git** - Git repository access
+- **go-git** - Core Git repository access
 
 ---
 
@@ -492,17 +999,29 @@ git-ai watch --interval=5m
 
 ---
 
-## Comparison Matrix
+## Feature Comparison
 
-| Feature | Keyword Search | Semantic Search |
-|---------|---------------|-----------------|
-| **Speed** | Instant (~50ms) | Fast (~300ms after index) |
-| **Accuracy** | Exact matches only | Understands meaning |
-| **Setup** | None | Requires TEI + Chroma |
-| **Indexing** | Not needed | First-time index (~1min/1k files) |
-| **Query Style** | Exact text/regex | Natural language |
-| **Use Case** | Known function names | Exploratory search |
-| **Cost** | Free (local) | TEI server required |
+### Search Capabilities
+
+| Feature | Keyword Search | Semantic Search | Symbol Analysis |
+|---------|---------------|-----------------|-----------------|
+| **Speed** | Instant (~50ms) | Fast (~300ms) | Fast (~100ms) |
+| **Accuracy** | Exact matches | Meaning-based | Syntax-aware |
+| **Setup** | None | TEI + Chroma | None |
+| **Indexing** | Not needed | First-time index | Not needed |
+| **Query Style** | Text/regex | Natural language | Symbol names |
+| **Language** | Any | Any | Go only |
+| **Use Case** | Text search | Concept search | Code navigation |
+
+### Code Operations
+
+| Feature | Availability | Safety | Use Case |
+|---------|--------------|--------|----------|
+| **File Modification** | ✅ Production | Confirmation required | AI code editors |
+| **Git Diff/Blame** | ✅ Production | Read-only | Code review |
+| **Smart Commits** | ✅ Production | Optional confirmation | Automated workflows |
+| **Security Scan** | ✅ Production | Read-only | CI/CD gates |
+| **Symbol Analysis** | ✅ Production | Read-only | IDE features |
 
 ---
 
@@ -578,6 +1097,8 @@ repo.IndexWithOptions(ctx, ai.IndexOptions{
 
 ### Core Types
 
+#### Search Types
+
 ```go
 type SearchResult struct {
     Chunk DocumentChunk
@@ -591,7 +1112,6 @@ type DocumentChunk struct {
     Content    string
     Language   string
     CommitHash string
-    // ...
 }
 
 type IndexOptions struct {
@@ -600,6 +1120,193 @@ type IndexOptions struct {
     MaxStaleness time.Duration
     OnProgress   func(file string, current, total int)
     Silent       bool
+}
+```
+
+#### Symbol Analysis Types
+
+```go
+type Symbol struct {
+    Name       string
+    Type       SymbolType // function, method, struct, interface, etc.
+    FilePath   string
+    Line       int
+    Column     int
+    Signature  string
+    DocComment string
+    Receiver   string // For methods
+}
+
+type Reference struct {
+    FilePath string
+    Line     int
+    Column   int
+    Context  string // Line of code containing reference
+}
+
+type GetSymbolsOptions struct {
+    FilePath    string
+    SymbolTypes []SymbolType
+    IncludeDocs bool
+}
+
+type FindReferencesOptions struct {
+    SymbolName string
+    FilePath   string // Optional: limit to file
+}
+```
+
+#### File Modification Types
+
+```go
+type FileOperation struct {
+    Type        string // "edit", "create", "delete"
+    FilePath    string
+    OldContent  string
+    NewContent  string
+    Description string
+    NeedsConfirm bool
+}
+
+type EditFileOptions struct {
+    FilePath        string
+    Content         string      // Replace entire file
+    LineRanges      []LineEdit  // Or edit specific lines
+    CreateIfMissing bool
+}
+
+type LineEdit struct {
+    StartLine int    // 1-based
+    EndLine   int    // 1-based, inclusive
+    NewText   string
+}
+
+type CreateFileOptions struct {
+    FilePath  string
+    Content   string
+    Overwrite bool
+}
+
+type DeleteFileOptions struct {
+    FilePath string
+}
+```
+
+#### Git Operations Types
+
+```go
+type DiffOptions struct {
+    FromCommit string
+    ToCommit   string // Empty = working tree
+    FilePath   string // Optional: specific file
+    MaxLines   int    // Truncate large diffs
+}
+
+type DiffResult struct {
+    FilePath   string
+    OldPath    string // For renames
+    Status     string // Added, Deleted, Modified, Renamed
+    Additions  int
+    Deletions  int
+    Diff       string // Unified diff format
+}
+
+type BlameOptions struct {
+    FilePath string
+    Commit   string // Optional: blame at specific commit
+}
+
+type BlameLine struct {
+    LineNumber int
+    CommitHash string
+    Author     string
+    Date       time.Time
+    Text       string
+}
+
+type HistoryOptions struct {
+    MaxCount int
+    FilePath string // Optional: filter by file
+    Author   string // Optional: filter by author
+    Since    time.Time
+    Until    time.Time
+}
+
+type CommitInfo struct {
+    Hash      string
+    ShortHash string
+    Author    string
+    Email     string
+    Date      time.Time
+    Message   string
+    Files     []string
+}
+
+type CommitOptions struct {
+    Message       string // Auto-generated if empty
+    Files         []string
+    AuthorName    string
+    AuthorEmail   string
+    AllowEmpty    bool
+    AmendPrevious bool
+}
+
+type CommitResult struct {
+    Hash         string
+    Message      string
+    FilesChanged []string
+    NeedsConfirm bool
+}
+
+type BranchOptions struct {
+    Name       string
+    FromCommit string // Empty = HEAD
+    Checkout   bool
+    Force      bool   // Overwrite if exists
+}
+
+type BranchResult struct {
+    Name    string
+    Hash    string
+    Message string
+}
+```
+
+#### Security Scanning Types
+
+```go
+type ScanOptions struct {
+    FilePath        string
+    CustomPatterns  []SecretPattern
+    ExcludePatterns []string
+}
+
+type ScanResult struct {
+    Findings         []SecretFinding
+    FilesScanned     int
+    SecretsFound     int
+    HighSeverity     int
+    MediumSeverity   int
+    LowSeverity      int
+}
+
+type SecretFinding struct {
+    Type        string
+    Description string
+    Severity    string // "high", "medium", "low"
+    FilePath    string
+    Line        int
+    Column      int
+    Match       string // Raw match
+    Redacted    string // Safe to display
+    Context     string
+}
+
+type DependencyInfo struct {
+    Name    string
+    Version string
+    Type    string // "go", "npm", "python"
+    Source  string // "go.mod", "package.json", etc.
 }
 ```
 
