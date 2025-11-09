@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	git "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
@@ -35,6 +36,11 @@ func mustCreateTempRepo(t *testing.T) *git.Repository {
 	}
 	
 	return repo
+}
+
+// cleanupRepo is a no-op since t.TempDir() handles cleanup automatically
+func cleanupRepo(t *testing.T, repo *git.Repository) {
+	// No-op: t.TempDir() handles cleanup automatically
 }
 
 // mustWrite writes content to a file in the repository
@@ -78,6 +84,7 @@ func mustCommitAll(t *testing.T, repo *git.Repository, message string) plumbing.
 		Author: &object.Signature{
 			Name:  "Test User",
 			Email: "test@example.com",
+			When:  time.Now(),
 		},
 	})
 	if err != nil {

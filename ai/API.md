@@ -1331,6 +1331,690 @@ for typ, deps := range byType {
 
 ---
 
+## File Search API
+
+Fast filename-only search optimized for LLM file references.
+
+### FindFiles
+
+Search for files by name with glob patterns and relevance scoring.
+
+```go
+func (r *Repository) FindFiles(
+    ctx context.Context,
+    opts FindFilesOptions,
+) ([]FileMatch, error)
+```
+
+**FindFilesOptions:**
+```go
+type FindFilesOptions struct {
+    Query         string   // Search query (supports glob patterns)
+    MaxResults    int      // Maximum results (default: 50)
+    Extensions    []string // Filter by extensions ([".go", ".js"])
+    ExcludeDirs   []string // Exclude directories (default: [".git", "node_modules"])
+    CaseSensitive bool     // Case-sensitive matching
+    UseGlob       bool     // Enable glob pattern matching
+}
+```
+
+**Returns:**
+- `[]FileMatch` - Matched files with scores and metadata
+- `error` - Any error encountered
+
+**Example:**
+```go
+// Find files by name
+matches, err := repo.FindFiles(ctx, ai.FindFilesOptions{
+    Query:      "test",
+    MaxResults: 20,
+})
+
+for _, match := range matches {
+    fmt.Printf("%.2f - %s (%s)\n", 
+        match.Score, match.FilePath, match.MatchType)
+}
+
+// Find with glob patterns (*.go, test*, etc.)
+matches, err := repo.FindFiles(ctx, ai.FindFilesOptions{
+    Query:   "*.go",
+    UseGlob: true,
+})
+
+// Filter by extension
+matches, err := repo.FindFiles(ctx, ai.FindFilesOptions{
+    Query:      "config",
+    Extensions: []string{".json", ".yaml", ".toml"},
+})
+```
+
+---
+
+### ListAllFiles
+
+Get all files in the repository.
+
+```go
+func (r *Repository) ListAllFiles(ctx context.Context) ([]string, error)
+```
+
+**Example:**
+```go
+files, err := repo.ListAllFiles(ctx)
+fmt.Printf("Total files: %d\n", len(files))
+```
+
+---
+
+### GetFilesByExtension
+
+Get files filtered by extension.
+
+```go
+func (r *Repository) GetFilesByExtension(
+    ctx context.Context,
+    extensions []string,
+) ([]string, error)
+```
+
+**Example:**
+```go
+// Get all Go files
+goFiles, err := repo.GetFilesByExtension(ctx, []string{".go", ".mod"})
+
+// Get all config files
+configs, err := repo.GetFilesByExtension(ctx, []string{".json", ".yaml", ".toml"})
+```
+
+---
+
+## Workspace Statistics API
+
+Project metrics and language analysis.
+
+### GetWorkspaceStats
+
+Get comprehensive workspace statistics.
+
+```go
+func (r *Repository) GetWorkspaceStats(
+    ctx context.Context,
+) (*WorkspaceStats, error)
+```
+
+**Returns:**
+- `*WorkspaceStats` - Comprehensive statistics
+- `error` - Any error encountered
+
+**Example:**
+```go
+stats, err := repo.GetWorkspaceStats(ctx)
+
+fmt.Printf("Project Overview:\n")
+fmt.Printf("Primary Language: %s\n", stats.PrimaryLanguage)
+fmt.Printf("Total Files: %d\n", stats.TotalFiles)
+fmt.Printf("Total Lines: %d\n", stats.TotalLines)
+fmt.Printf("Total Size: %d bytes\n", stats.TotalSize)
+fmt.Printf("Max Depth: %d\n", stats.MaxDepth)
+
+// Language breakdown
+fmt.Printf("\nLanguages:\n")
+for lang, count := range stats.FilesByLanguage {
+    pct := stats.LanguagePercent[lang]
+    lines := stats.LinesByLanguage[lang]
+    fmt.Printf("  %s: %d files (%.1f%%), %d lines\n",
+        lang, count, pct, lines)
+}
+
+// Top directories
+fmt.Printf("\nTop Directories:\n")
+for _, dir := range stats.TopDirectories {
+    fmt.Printf("  %s: %d files\n", dir.Path, dir.FileCount)
+}
+```
+
+---
+
+### GetLanguageBreakdown
+
+Get detailed language statistics sorted by usage.
+
+```go
+func (r *Repository) GetLanguageBreakdown(
+    ctx context.Context,
+) ([]LanguageInfo, error)
+```
+
+**Returns:**
+- `[]LanguageInfo` - Languages sorted by percentage
+- `error` - Any error encountered
+
+**Example:**
+```go
+languages, err := repo.GetLanguageBreakdown(ctx)
+
+for _, lang := range languages {
+    fmt.Printf("%s: %d files, %d lines, %.1f%%\n",
+        lang.Name, lang.Files, lang.Lines, lang.Percentage)
+}
+```
+
+---
+
+## Recent Files API
+
+Git history-based tracking of recently modified files.
+
+### GetRecentFiles
+
+Get recently modified files from Git history.
+
+```go
+func (r *Repository) GetRecentFiles(
+    ctx context.Context,
+    opts RecentFilesOptions,
+) ([]RecentFile, error)
+```
+
+**RecentFilesOptions:**
+```go
+type RecentFilesOptions struct {
+    MaxFiles  int           // Max files to return (default: 20)
+    MaxAge    time.Duration // Only files within this age (default: 7 days)
+    Author    string        // Filter by author
+    Extension []string      // Filter by extensions
+    Since     time.Time     // Only commits after this time
+}
+```
+
+**Example:**
+```go
+// Get recent files (last 7 days)
+recent, err := repo.GetRecentFiles(ctx, ai.RecentFilesOptions{
+    MaxFiles: 20,
+})
+
+for _, file := range recent {
+    fmt.Printf("%s - %s by %s (%s)\n",
+        file.FilePath,
+        file.LastModified.Format("2006-01-02 15:04"),
+        file.Author,
+        file.ChangeType)
+}
+
+// Filter by extension
+goRecent, err := repo.GetRecentFiles(ctx, ai.RecentFilesOptions{
+    MaxFiles:  10,
+    Extension: []string{".go"},
+})
+
+// Filter by author
+myFiles, err := repo.GetRecentFiles(ctx, ai.RecentFilesOptions{
+    Author:   "john@example.com",
+    MaxFiles: 20,
+})
+```
+
+---
+
+### GetRecentlyModifiedFiles
+
+Get files from the last N commits.
+
+```go
+func (r *Repository) GetRecentlyModifiedFiles(
+    ctx context.Context,
+    maxCommits int,
+) ([]string, error)
+```
+
+**Example:**
+```go
+// Get files changed in last 10 commits
+files, err := repo.GetRecentlyModifiedFiles(ctx, 10)
+```
+
+---
+
+### GetFileHistory
+
+Get commit history for a specific file.
+
+```go
+func (r *Repository) GetFileHistory(
+    ctx context.Context,
+    filePath string,
+    maxCommits int,
+) ([]RecentFile, error)
+```
+
+**Example:**
+```go
+// Get history for main.go
+history, err := repo.GetFileHistory(ctx, "main.go", 50)
+
+for _, entry := range history {
+    fmt.Printf("%s - %s: %s\n",
+        entry.LastModified.Format("2006-01-02"),
+        entry.Author,
+        entry.CommitMsg)
+}
+```
+
+---
+
+## File Metadata API
+
+Comprehensive file information and analysis.
+
+### GetFileMetadata
+
+Get detailed metadata for a file.
+
+```go
+func (r *Repository) GetFileMetadata(
+    ctx context.Context,
+    filePath string,
+) (*FileMetadata, error)
+```
+
+**Returns:**
+- `*FileMetadata` - Comprehensive file information
+- `error` - Any error encountered
+
+**Example:**
+```go
+metadata, err := repo.GetFileMetadata(ctx, "main.go")
+
+fmt.Printf("File: %s\n", metadata.FilePath)
+fmt.Printf("Size: %s (%d bytes)\n", metadata.SizeHuman, metadata.Size)
+fmt.Printf("Lines: %d\n", metadata.LineCount)
+fmt.Printf("Language: %s\n", metadata.Language)
+fmt.Printf("Git Status: %s\n", metadata.GitStatus)
+fmt.Printf("Executable: %v\n", metadata.IsExecutable)
+fmt.Printf("Binary: %v\n", metadata.IsBinary)
+fmt.Printf("Encoding: %s\n", metadata.Encoding)
+
+if metadata.LastCommit != nil {
+    fmt.Printf("Last Commit: %s by %s on %s\n",
+        metadata.LastCommit.ShortHash,
+        metadata.LastCommit.Author,
+        metadata.LastCommit.Date.Format("2006-01-02"))
+}
+```
+
+---
+
+### GetBulkMetadata
+
+Get metadata for multiple files efficiently.
+
+```go
+func (r *Repository) GetBulkMetadata(
+    ctx context.Context,
+    filePaths []string,
+) ([]*FileMetadata, error)
+```
+
+**Example:**
+```go
+files := []string{"main.go", "utils.go", "config.go"}
+metadata, err := repo.GetBulkMetadata(ctx, files)
+
+for _, m := range metadata {
+    fmt.Printf("%s: %s, %d lines, %s\n",
+        m.FilePath, m.SizeHuman, m.LineCount, m.GitStatus)
+}
+```
+
+---
+
+## Grep Search API
+
+Powerful text/regex search across repository files.
+
+### GrepSearch
+
+Search for text or regex patterns in files.
+
+```go
+func (r *Repository) GrepSearch(
+    ctx context.Context,
+    opts GrepOptions,
+) ([]GrepMatch, error)
+```
+
+**GrepOptions:**
+```go
+type GrepOptions struct {
+    Pattern         string   // Search pattern (text or regex)
+    UseRegex        bool     // Treat pattern as regex
+    CaseInsensitive bool     // Case-insensitive search
+    WholeWord       bool     // Match whole words only
+    MaxMatches      int      // Max matches (default: 1000)
+    ContextLines    int      // Lines before/after (default: 0)
+    
+    // File filtering
+    Include         []string // Include patterns (["*.go"])
+    Exclude         []string // Exclude patterns (["*_test.go"])
+    FilePath        string   // Search specific file only
+    
+    // Advanced
+    Invert          bool     // Invert match (lines NOT matching)
+    MaxLineLength   int      // Skip lines longer than this
+}
+```
+
+**Example:**
+```go
+// Basic text search
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern:    "TODO",
+    MaxMatches: 100,
+})
+
+// Regex search
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern:  "func.*Error.*{",
+    UseRegex: true,
+})
+
+// With context lines
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern:      "authenticate",
+    ContextLines: 3,
+})
+
+// Filter by file type
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern: "token",
+    Include: []string{"*.go", "*.py"},
+    Exclude: []string{"*_test.go"},
+})
+
+for _, match := range matches {
+    fmt.Printf("%s:%d:%d - %s\n",
+        match.FilePath,
+        match.LineNumber,
+        match.Column,
+        match.Line)
+    
+    // Show context
+    for _, before := range match.Before {
+        fmt.Printf("  < %s\n", before)
+    }
+    fmt.Printf("  > %s\n", match.Line)
+    for _, after := range match.After {
+        fmt.Printf("  < %s\n", after)
+    }
+}
+```
+
+---
+
+### GrepCount
+
+Get count of matches without returning details.
+
+```go
+func (r *Repository) GrepCount(
+    ctx context.Context,
+    opts GrepOptions,
+) (int, error)
+```
+
+**Example:**
+```go
+count, err := repo.GrepCount(ctx, ai.GrepOptions{
+    Pattern: "FIXME",
+})
+fmt.Printf("Found %d FIXME comments\n", count)
+```
+
+---
+
+### GrepFiles
+
+Get filenames containing matches (no line details).
+
+```go
+func (r *Repository) GrepFiles(
+    ctx context.Context,
+    opts GrepOptions,
+) ([]string, error)
+```
+
+**Example:**
+```go
+files, err := repo.GrepFiles(ctx, ai.GrepOptions{
+    Pattern: "password",
+})
+fmt.Printf("Files containing 'password': %v\n", files)
+```
+
+---
+
+## Git Stash API
+
+Save and restore work in progress.
+
+### StashChanges
+
+Save current changes to stash.
+
+```go
+func (r *Repository) StashChanges(
+    ctx context.Context,
+    opts StashOptions,
+) (*StashResult, error)
+```
+
+**StashOptions:**
+```go
+type StashOptions struct {
+    Message          string   // Custom stash message
+    IncludeUntracked bool     // Include untracked files
+    KeepIndex        bool     // Keep changes in index
+    Files            []string // Stash specific files only
+}
+```
+
+**Example:**
+```go
+// Stash all changes
+result, err := repo.StashChanges(ctx, ai.StashOptions{
+    Message: "WIP: refactoring auth module",
+})
+result.Entry.Confirm() // Apply stash
+
+fmt.Printf("Stashed %d files\n", result.FilesStashed)
+```
+
+---
+
+### ListStashes
+
+Get all stash entries.
+
+```go
+func (r *Repository) ListStashes(
+    ctx context.Context,
+) ([]StashEntry, error)
+```
+
+**Example:**
+```go
+stashes, err := repo.ListStashes(ctx)
+
+for i, stash := range stashes {
+    fmt.Printf("stash@{%d}: %s\n", i, stash.Message)
+    fmt.Printf("  Created: %s by %s\n",
+        stash.CreatedAt.Format("2006-01-02 15:04"),
+        stash.Author)
+}
+```
+
+---
+
+### ApplyStash
+
+Apply a stash entry.
+
+```go
+func (r *Repository) ApplyStash(
+    ctx context.Context,
+    index int,
+    drop bool,
+) error
+```
+
+**Example:**
+```go
+// Apply most recent stash (keep it)
+err := repo.ApplyStash(ctx, 0, false)
+
+// Apply and remove
+err := repo.ApplyStash(ctx, 0, true)
+```
+
+---
+
+### PopStash
+
+Apply and remove a stash.
+
+```go
+func (r *Repository) PopStash(
+    ctx context.Context,
+    index int,
+) error
+```
+
+**Example:**
+```go
+err := repo.PopStash(ctx, 0)
+```
+
+---
+
+### DropStash
+
+Remove a stash without applying.
+
+```go
+func (r *Repository) DropStash(
+    ctx context.Context,
+    index int,
+) error
+```
+
+---
+
+### ClearStashes
+
+Remove all stashes.
+
+```go
+func (r *Repository) ClearStashes(ctx context.Context) error
+```
+
+---
+
+## Extended Branch Operations API
+
+Comprehensive branch management.
+
+### ListBranches
+
+Get all branches with metadata.
+
+```go
+func (r *Repository) ListBranches(
+    ctx context.Context,
+) ([]BranchInfo, error)
+```
+
+**Example:**
+```go
+branches, err := repo.ListBranches(ctx)
+
+for _, branch := range branches {
+    current := ""
+    if branch.IsCurrent {
+        current = " *"
+    }
+    remote := ""
+    if branch.IsRemote {
+        remote = " (remote)"
+    }
+    
+    fmt.Printf("%s%s%s - %s\n",
+        current,
+        branch.Name,
+        remote,
+        branch.ShortHash)
+    
+    if branch.LastCommit != nil {
+        fmt.Printf("  %s by %s\n",
+            branch.LastCommit.Message,
+            branch.LastCommit.Author)
+    }
+}
+```
+
+---
+
+### SwitchBranch
+
+Switch to a different branch.
+
+```go
+func (r *Repository) SwitchBranch(
+    ctx context.Context,
+    branchName string,
+    create bool,
+) error
+```
+
+**Example:**
+```go
+// Switch to existing branch
+err := repo.SwitchBranch(ctx, "feature/new-api", false)
+
+// Create and switch to new branch
+err := repo.SwitchBranch(ctx, "feature/experimental", true)
+```
+
+---
+
+### MergeBranch
+
+Merge a branch into current branch.
+
+```go
+func (r *Repository) MergeBranch(
+    ctx context.Context,
+    sourceBranch string,
+) (*MergeResult, error)
+```
+
+**Example:**
+```go
+result, err := repo.MergeBranch(ctx, "feature/completed")
+
+if result.Success {
+    fmt.Printf("Successfully merged %d files\n",
+        len(result.MergedFiles))
+} else {
+    fmt.Printf("Merge conflicts detected:\n")
+    for _, file := range result.Conflicts {
+        fmt.Printf("  - %s\n", file)
+    }
+}
+```
+
+---
+
 ## Types Reference
 
 ### Search Types

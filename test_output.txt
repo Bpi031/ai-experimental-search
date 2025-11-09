@@ -1,0 +1,10 @@
+# github.com/go-git/go-git/v6/ai [github.com/go-git/go-git/v6/ai.test]
+ai/grep_search_test.go:245:9: invalid argument: counts (variable of type int) for built-in len
+ai/grep_search_test.go:246:67: invalid argument: counts (variable of type int) for built-in len
+ai/file_metadata.go:11:2: "github.com/go-git/go-git/v6/plumbing" imported and not used
+ai/file_metadata.go:12:2: "github.com/go-git/go-git/v6/plumbing/filemode" imported and not used
+ai/file_metadata.go:13:2: "github.com/go-git/go-git/v6/plumbing/format/index" imported and not used
+ai/file_metadata.go:14:2: "github.com/go-git/go-git/v6/plumbing/object" imported and not used
+ai/recent_files.go:10:2: "github.com/go-git/go-git/v6/plumbing" imported and not used
+FAIL	github.com/go-git/go-git/v6/ai [build failed]
+FAIL

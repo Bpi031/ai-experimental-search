@@ -4,16 +4,23 @@ This package provides comprehensive AI-powered capabilities for Git repositories
 
 ## Core Capabilities
 
-### 🔍 **Search & Analysis**
+### 🔍 **Search & Discovery**
 1. **Keyword Search** - Fast text-based search (like `grep`)
 2. **Semantic Search** - AI-powered understanding of code meaning
-3. **Code Embedding** - Vector representations for similarity matching
-4. **Symbol Analysis** - Go code intelligence (functions, types, references)
+3. **File Search** - Fast filename-only search with glob patterns
+4. **Grep Search** - Powerful regex search across repository
+5. **Symbol Analysis** - Go code intelligence (functions, types, references)
 
-### ✏️ **Code Modification** (New!)
-5. **File Operations** - Safe file creation, editing, and deletion with confirmation
-6. **Git Operations** - AI-assisted commits, branch management, diff, blame, history
-7. **Security Scanning** - Secret detection and dependency analysis
+### 📊 **Context & Intelligence**
+6. **Workspace Stats** - Language breakdown, LOC, project metrics
+7. **Recent Files** - Git history-based recent file tracking
+8. **File Metadata** - Comprehensive file information (size, git status, etc.)
+
+### ✏️ **Code Modification**
+9. **File Operations** - Safe file creation, editing, and deletion with confirmation
+10. **Git Operations** - AI-assisted commits, branch management, diff, blame, history
+11. **Git Stash** - Save/restore work in progress
+12. **Security Scanning** - Secret detection and dependency analysis
 
 ---
 
@@ -31,16 +38,46 @@ results, _ := ai.KeywordSearchRepo(ctx, "/path/to/repo", "OAuth", 10)
 // 🔍 SEARCH - Semantic search (auto-indexes on first use)
 results, _ := ai.SemanticSearchRepo(ctx, "/path/to/repo", "authentication logic", 10, false)
 
-// 🧠 ANALYSIS - Analyze Go code symbols
+// 📁 FILE SEARCH - Find files by name (fast filename-only search)
+files, _ := repo.FindFiles(ctx, ai.FindFilesOptions{
+    Query: "test", UseGlob: true, MaxResults: 10,
+})
+
+// 🔎 GREP - Powerful regex search across files
+matches, _ := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern: "TODO|FIXME", UseRegex: true, ContextLines: 2,
+})
+
+// 🧠 SYMBOLS - Analyze Go code symbols
 symbols, _ := repo.GetSymbols(ctx, ai.GetSymbolsOptions{FilePath: "main.go"})
 refs, _ := repo.FindReferences(ctx, ai.FindReferencesOptions{SymbolName: "UserAuth"})
+
+// 📊 STATS - Get workspace statistics
+stats, _ := repo.GetWorkspaceStats(ctx)
+fmt.Printf("Languages: %v, LOC: %d\n", stats.PrimaryLanguage, stats.TotalLines)
+
+// 📝 RECENT - Track recently modified files
+recent, _ := repo.GetRecentFiles(ctx, ai.RecentFilesOptions{MaxFiles: 10})
+
+// 📄 METADATA - Get file information
+metadata, _ := repo.GetFileMetadata(ctx, "main.go")
+fmt.Printf("Size: %s, Lines: %d, Status: %s\n", metadata.SizeHuman, metadata.LineCount, metadata.GitStatus)
 
 // ✏️ MODIFY - Edit files safely with confirmation
 op, _ := repo.EditFile(ctx, ai.EditFileOptions{
     FilePath: "config.go",
     Content:  "package config\n\nconst Version = \"2.0\"",
 })
-repo.ApplyFileOperation(op) // Apply after confirmation
+op.Confirm() // Apply after confirmation
+
+// 🌿 BRANCHES - Extended branch operations
+branches, _ := repo.ListBranches(ctx)
+repo.SwitchBranch(ctx, "feature/new-api", true)
+repo.MergeBranch(ctx, "feature/completed")
+
+// 💾 STASH - Save/restore work in progress
+stash, _ := repo.StashChanges(ctx, ai.StashOptions{Message: "WIP"})
+repo.ApplyStash(ctx, 0, false)
 
 // 🔒 SECURITY - Scan for secrets
 result, _ := repo.ScanForSecrets(ctx, ai.ScanOptions{})
@@ -821,6 +858,383 @@ fmt.Printf("Secrets: %d | Dependencies: %d\n",
 - **CI/CD gates** - Block commits with secrets
 - **Compliance** - Ensure no sensitive data in repos
 - **Dependency tracking** - Monitor external packages
+
+---
+
+## 8. File Search
+
+Fast filename-only search optimized for finding files quickly, separate from content search.
+
+### Features
+
+- ✅ **Glob pattern support** - `*.go`, `test*`, `*_test.go`
+- ✅ **Multiple matching strategies** - Exact, prefix, suffix, contains, fuzzy
+- ✅ **Relevance scoring** - Better matches ranked higher
+- ✅ **Extension filtering** - Find all `.py`, `.js`, `.go` files
+- ✅ **Directory exclusions** - Skip `node_modules`, `.git`, `vendor`
+- ✅ **Case-insensitive** - Works like GitHub Copilot's `#` file references
+
+### API
+
+```go
+// Find files by name
+matches, err := repo.FindFiles(ctx, ai.FindFilesOptions{
+    Query:      "test",
+    MaxResults: 20,
+})
+
+// Find with glob patterns
+matches, err := repo.FindFiles(ctx, ai.FindFilesOptions{
+    Query:   "*.go",
+    UseGlob: true,
+})
+
+// Filter by extension
+goFiles, err := repo.GetFilesByExtension(ctx, []string{".go", ".mod"})
+
+// List all files
+allFiles, err := repo.ListAllFiles(ctx)
+```
+
+### Match Scoring
+
+Files are ranked by relevance:
+- **1.0** - Exact filename match
+- **0.85** - Glob pattern match
+- **0.8** - Prefix match
+- **0.75** - Suffix match
+- **0.7** - Contains in filename
+- **0.6** - Contains in path
+- **0.5** - Fuzzy match
+
+### Use Cases
+
+- **LLM file references** - Like GitHub Copilot's `#filename` feature
+- **Quick navigation** - Jump to files by name
+- **IDE autocomplete** - File path suggestions
+- **Build tools** - Find test files, config files
+
+---
+
+## 9. Workspace Statistics
+
+Comprehensive project metrics and language analysis.
+
+### Features
+
+- ✅ **Language detection** - 50+ programming languages
+- ✅ **LOC counting** - Lines of code per language
+- ✅ **File statistics** - Counts by language and extension
+- ✅ **Directory analysis** - Top directories by file count
+- ✅ **Size metrics** - Total size and size per language
+- ✅ **Project insights** - Primary language, depth, structure
+
+### API
+
+```go
+// Get comprehensive stats
+stats, err := repo.GetWorkspaceStats(ctx)
+
+fmt.Printf("Primary Language: %s\n", stats.PrimaryLanguage)
+fmt.Printf("Total Files: %d\n", stats.TotalFiles)
+fmt.Printf("Total Lines: %d\n", stats.TotalLines)
+fmt.Printf("Total Size: %s\n", formatBytes(stats.TotalSize))
+
+// Language breakdown
+for lang, count := range stats.FilesByLanguage {
+    fmt.Printf("%s: %d files (%.1f%%)\n", 
+        lang, count, stats.LanguagePercent[lang])
+}
+
+// Get detailed language info (sorted by percentage)
+languages, err := repo.GetLanguageBreakdown(ctx)
+for _, lang := range languages {
+    fmt.Printf("%s: %d files, %d lines, %.1f%%\n",
+        lang.Name, lang.Files, lang.Lines, lang.Percentage)
+}
+```
+
+### Supported Languages
+
+Go, Python, JavaScript, TypeScript, Java, C, C++, C#, Ruby, PHP, Swift, Kotlin, Rust, Scala, Shell, Perl, R, Objective-C, SQL, HTML, CSS, YAML, JSON, Markdown, and 25+ more.
+
+### Use Cases
+
+- **Project overview** - Understand codebase composition
+- **Tech stack discovery** - Identify languages used
+- **Code metrics** - LOC tracking and reporting
+- **LLM context** - Provide project info to AI assistants
+
+---
+
+## 10. Recent Files Tracking
+
+Git history-based tracking of recently modified files.
+
+### Features
+
+- ✅ **Git history analysis** - Find files from recent commits
+- ✅ **Time-based filtering** - Last 7 days, 30 days, custom
+- ✅ **Author filtering** - Find changes by specific developers
+- ✅ **Extension filtering** - Track only `.go`, `.py`, etc.
+- ✅ **Change types** - Added, modified, deleted
+- ✅ **Sorted by recency** - Most recent first
+
+### API
+
+```go
+// Get recent files (last 7 days)
+recent, err := repo.GetRecentFiles(ctx, ai.RecentFilesOptions{
+    MaxFiles: 20,
+    MaxAge:   7 * 24 * time.Hour,
+})
+
+for _, file := range recent {
+    fmt.Printf("%s - %s by %s (%s)\n",
+        file.FilePath,
+        file.LastModified.Format("2006-01-02"),
+        file.Author,
+        file.ChangeType)
+}
+
+// Filter by extension
+goRecent, err := repo.GetRecentFiles(ctx, ai.RecentFilesOptions{
+    MaxFiles:  10,
+    Extension: []string{".go"},
+})
+
+// Get files from last N commits
+files, err := repo.GetRecentlyModifiedFiles(ctx, 10)
+
+// Get full history for a file
+history, err := repo.GetFileHistory(ctx, "main.go", 50)
+```
+
+### Use Cases
+
+- **Context awareness** - Show what user has been working on
+- **Quick access** - Jump to recently edited files
+- **Activity tracking** - Monitor project activity
+- **LLM context** - Provide recent work history to AI
+
+---
+
+## 11. File Metadata
+
+Comprehensive file information including Git status and content analysis.
+
+### Features
+
+- ✅ **Basic info** - Size, timestamps, permissions
+- ✅ **Git integration** - Status, blob hash, last commit
+- ✅ **Content analysis** - Line count, binary detection, encoding
+- ✅ **Language detection** - Auto-detect programming language
+- ✅ **Bulk operations** - Get metadata for multiple files efficiently
+
+### API
+
+```go
+// Get file metadata
+metadata, err := repo.GetFileMetadata(ctx, "main.go")
+
+fmt.Printf("File: %s\n", metadata.FilePath)
+fmt.Printf("Size: %s (%d bytes)\n", metadata.SizeHuman, metadata.Size)
+fmt.Printf("Lines: %d\n", metadata.LineCount)
+fmt.Printf("Language: %s\n", metadata.Language)
+fmt.Printf("Git Status: %s\n", metadata.GitStatus)
+fmt.Printf("Last Modified: %s\n", metadata.LastModified)
+
+// Last commit info
+if metadata.LastCommit != nil {
+    fmt.Printf("Last Commit: %s by %s\n",
+        metadata.LastCommit.ShortHash,
+        metadata.LastCommit.Author)
+}
+
+// Bulk metadata
+files := []string{"main.go", "utils.go", "config.go"}
+metadata, err := repo.GetBulkMetadata(ctx, files)
+```
+
+### Git Status Values
+
+- `tracked` - File is committed and unchanged
+- `modified` - File has uncommitted changes
+- `staged-modified` - Changes are staged
+- `staged-new` - New file staged for commit
+- `untracked` - File not in Git
+- `deleted` - File deleted but not committed
+
+### Use Cases
+
+- **File information panels** - Show file details in IDEs
+- **LLM context** - Provide file info to AI assistants
+- **Build systems** - Check file sizes and types
+- **Git status UI** - Display working tree status
+
+---
+
+## 12. Grep Search
+
+Powerful text/regex search across all repository files.
+
+### Features
+
+- ✅ **Regex support** - Full regular expression matching
+- ✅ **Context lines** - Show N lines before/after matches
+- ✅ **Advanced filtering** - Include/exclude patterns
+- ✅ **Case sensitivity** - Optional case-sensitive matching
+- ✅ **Whole word** - Match complete words only
+- ✅ **Invert match** - Find lines NOT matching pattern
+- ✅ **Multiple modes** - Full matches, count only, files only
+
+### API
+
+```go
+// Basic text search
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern:    "TODO",
+    MaxMatches: 100,
+})
+
+// Regex search with context
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern:      "func.*Error.*{",
+    UseRegex:     true,
+    ContextLines: 3,
+})
+
+// Filter by file type
+matches, err := repo.GrepSearch(ctx, ai.GrepOptions{
+    Pattern: "authenticate",
+    Include: []string{"*.go", "*.py"},
+    Exclude: []string{"*_test.go"},
+})
+
+// Get just count
+count, err := repo.GrepCount(ctx, ai.GrepOptions{
+    Pattern: "FIXME",
+})
+
+// Get just filenames containing matches
+files, err := repo.GrepFiles(ctx, ai.GrepOptions{
+    Pattern: "password",
+})
+```
+
+### Use Cases
+
+- **Code search** - Find patterns across codebase
+- **Refactoring** - Find all usages before changes
+- **Code review** - Search for problematic patterns
+- **Documentation** - Find TODO/FIXME comments
+
+---
+
+## 13. Git Stash Operations
+
+Save and restore work in progress.
+
+### Features
+
+- ✅ **Save changes** - Stash uncommitted work
+- ✅ **Custom messages** - Descriptive stash names
+- ✅ **List stashes** - View all saved stashes
+- ✅ **Apply stash** - Restore without deleting
+- ✅ **Pop stash** - Restore and delete
+- ✅ **Drop stash** - Delete without applying
+- ✅ **Clear all** - Remove all stashes
+- ✅ **Confirmation workflow** - Safe for AI agents
+
+### API
+
+```go
+// Stash current changes
+result, err := repo.StashChanges(ctx, ai.StashOptions{
+    Message: "WIP: refactoring auth module",
+})
+result.Confirm() // Apply after confirmation
+
+// List all stashes
+stashes, err := repo.ListStashes(ctx)
+for i, stash := range stashes {
+    fmt.Printf("stash@{%d}: %s (%s)\n",
+        i, stash.Message, stash.CreatedAt.Format("2006-01-02"))
+}
+
+// Apply stash (keep it in list)
+err := repo.ApplyStash(ctx, 0, false)
+
+// Pop stash (apply and remove)
+err := repo.PopStash(ctx, 0)
+
+// Drop specific stash
+err := repo.DropStash(ctx, 0)
+
+// Clear all stashes
+err := repo.ClearStashes(ctx)
+```
+
+### Use Cases
+
+- **Context switching** - Save work when switching branches
+- **Experimentation** - Try changes without committing
+- **Emergency fixes** - Quickly save unfinished work
+- **AI agents** - Safe WIP management
+
+---
+
+## 14. Extended Branch Operations
+
+Comprehensive branch management beyond create/delete.
+
+### Features
+
+- ✅ **List branches** - All local and remote branches
+- ✅ **Branch metadata** - Last commit, author, date
+- ✅ **Switch branches** - Checkout existing or create new
+- ✅ **Merge branches** - Merge with conflict detection
+- ✅ **Current branch** - Identify active branch
+- ✅ **Ahead/behind** - Track divergence (future feature)
+
+### API
+
+```go
+// List all branches
+branches, err := repo.ListBranches(ctx)
+for _, branch := range branches {
+    current := ""
+    if branch.IsCurrent {
+        current = " *"
+    }
+    fmt.Printf("%s%s - %s (%s)\n",
+        current,
+        branch.Name,
+        branch.ShortHash,
+        branch.LastCommit.Message)
+}
+
+// Switch to existing branch
+err := repo.SwitchBranch(ctx, "feature/new-api", false)
+
+// Create and switch to new branch
+err := repo.SwitchBranch(ctx, "feature/experimental", true)
+
+// Merge branch into current
+result, err := repo.MergeBranch(ctx, "feature/completed")
+if result.Success {
+    fmt.Printf("Merged %d files\n", len(result.MergedFiles))
+} else {
+    fmt.Printf("Conflicts in: %v\n", result.Conflicts)
+}
+```
+
+### Use Cases
+
+- **Branch management** - View and manage branches
+- **Workflow automation** - Automated branch operations
+- **AI-assisted merging** - Smart merge operations
+- **IDE branch UI** - Display branch information
 
 ---
 

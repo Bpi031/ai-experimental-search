@@ -370,3 +370,168 @@ func (g *GitWriter) DeleteBranch(ctx context.Context, branchName string, force b
 
 	return nil
 }
+
+// BranchInfo contains information about a branch.
+type BranchInfo struct {
+	Name      string    `json:"name"`
+	Hash      string    `json:"hash"`
+	ShortHash string    `json:"short_hash"`
+	IsCurrent bool      `json:"is_current"`
+	IsRemote  bool      `json:"is_remote"`
+	Ahead     int       `json:"ahead"`
+	Behind    int       `json:"behind"`
+	LastCommit *CommitInfo `json:"last_commit,omitempty"`
+}
+
+// ListBranches returns all branches in the repository.
+func (g *GitWriter) ListBranches(ctx context.Context) ([]BranchInfo, error) {
+	branches := []BranchInfo{}
+
+	// Get current branch
+	head, err := g.repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+	currentBranch := head.Name().Short()
+
+	// Get all branches
+	refs, err := g.repo.References()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get references: %w", err)
+	}
+
+	err = refs.ForEach(func(ref *plumbing.Reference) error {
+		// Only process branch references
+		if ref.Name().IsBranch() || ref.Name().IsRemote() {
+			branchName := ref.Name().Short()
+			isRemote := ref.Name().IsRemote()
+
+			// Get last commit
+			commit, err := g.repo.CommitObject(ref.Hash())
+			var lastCommit *CommitInfo
+			if err == nil {
+				lastCommit = &CommitInfo{
+					Hash:       commit.Hash.String(),
+					ShortHash:  commit.Hash.String()[:7],
+					Author:     commit.Author.Name,
+					AuthorTime: commit.Author.When,
+					Message:    commit.Message,
+					ShortMsg:   getShortMessage(commit.Message),
+				}
+			}
+			
+			branches = append(branches, BranchInfo{
+				Name:       branchName,
+				Hash:       ref.Hash().String(),
+				ShortHash:  ref.Hash().String()[:7],
+				IsCurrent:  !isRemote && branchName == currentBranch,
+				IsRemote:   isRemote,
+				LastCommit: lastCommit,
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate references: %w", err)
+	}
+
+	return branches, nil
+}
+
+// SwitchBranch switches to a different branch (git checkout).
+func (g *GitWriter) SwitchBranch(ctx context.Context, branchName string, create bool) error {
+	if branchName == "" {
+		return fmt.Errorf("branch name is required")
+	}
+
+	w, err := g.repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	checkoutOpts := &git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(branchName),
+		Create: create,
+	}
+
+	if err := w.Checkout(checkoutOpts); err != nil {
+		return fmt.Errorf("failed to checkout branch: %w", err)
+	}
+
+	return nil
+}
+
+// MergeResult represents the result of a merge operation.
+type MergeResult struct {
+	Success      bool     `json:"success"`
+	Conflicts    []string `json:"conflicts,omitempty"`
+	MergedFiles  []string `json:"merged_files"`
+	CommitHash   string   `json:"commit_hash,omitempty"`
+	Message      string   `json:"message"`
+	NeedsConfirm bool     `json:"needs_confirm"`
+}
+
+// MergeBranch merges a source branch into the current branch.
+func (g *GitWriter) MergeBranch(ctx context.Context, sourceBranch string) (*MergeResult, error) {
+	if sourceBranch == "" {
+		return nil, fmt.Errorf("source branch name is required")
+	}
+
+	// Get worktree
+	w, err := g.repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	// Get current branch
+	head, err := g.repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+	currentBranch := head.Name().Short()
+
+	// Get source branch reference
+	sourceRef, err := g.repo.Reference(plumbing.NewBranchReferenceName(sourceBranch), true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find source branch: %w", err)
+	}
+
+	// Perform merge
+	err = g.repo.Merge(*sourceRef, git.MergeOptions{})
+	
+	result := &MergeResult{
+		Message:      fmt.Sprintf("Merged %s into %s", sourceBranch, currentBranch),
+		MergedFiles:  []string{},
+		NeedsConfirm: g.RequireConfirmation,
+	}
+
+	if err != nil {
+		// Check if it's a conflict error
+		if strings.Contains(err.Error(), "conflict") {
+			result.Success = false
+			result.Message = "Merge conflicts detected"
+			
+			// Get conflicted files
+			status, _ := w.Status()
+			for file, s := range status {
+				if s.Worktree == git.UpdatedButUnmerged {
+					result.Conflicts = append(result.Conflicts, file)
+				}
+			}
+			
+			return result, fmt.Errorf("merge conflicts in %d files", len(result.Conflicts))
+		}
+		return nil, fmt.Errorf("merge failed: %w", err)
+	}
+
+	result.Success = true
+
+	// Get merged files from status
+	status, _ := w.Status()
+	for file := range status {
+		result.MergedFiles = append(result.MergedFiles, file)
+	}
+
+	return result, nil
+}

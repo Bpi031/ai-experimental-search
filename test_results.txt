@@ -1,0 +1,144 @@
+=== RUN   TestGitWriter_ListBranches
+--- PASS: TestGitWriter_ListBranches (0.01s)
+=== RUN   TestGitWriter_SwitchBranch
+--- PASS: TestGitWriter_SwitchBranch (0.01s)
+=== RUN   TestGitWriter_SwitchBranch_CreateNew
+--- PASS: TestGitWriter_SwitchBranch_CreateNew (0.01s)
+=== RUN   TestGitWriter_MergeBranch
+    branch_operations_test.go:127: Merge test requires more complex setup - skipping for now
+--- SKIP: TestGitWriter_MergeBranch (0.00s)
+=== RUN   TestGitWriter_BranchInfo
+--- PASS: TestGitWriter_BranchInfo (0.00s)
+=== RUN   TestGitWriter_DeleteBranch_Extended
+--- PASS: TestGitWriter_DeleteBranch_Extended (0.00s)
+=== RUN   TestFileMetadataProvider_GetFileMetadata
+    file_metadata_test.go:56: GetFileMetadata() LineCount = 6, want 5
+--- FAIL: TestFileMetadataProvider_GetFileMetadata (0.00s)
+=== RUN   TestFileMetadataProvider_GetBulkMetadata
+--- PASS: TestFileMetadataProvider_GetBulkMetadata (0.01s)
+=== RUN   TestFileMetadataProvider_GitStatus
+    file_metadata_test.go:132: GetFileMetadata() GitStatus = untracked, want tracked
+--- FAIL: TestFileMetadataProvider_GitStatus (0.00s)
+=== RUN   TestFileMetadataProvider_LastCommit
+--- PASS: TestFileMetadataProvider_LastCommit (0.00s)
+=== RUN   TestFileMetadataProvider_BinaryDetection
+--- PASS: TestFileMetadataProvider_BinaryDetection (0.00s)
+=== RUN   TestFileMetadataProvider_SizeFormatting
+=== RUN   TestFileMetadataProvider_SizeFormatting/100_B
+=== RUN   TestFileMetadataProvider_SizeFormatting/1.0_KB
+=== RUN   TestFileMetadataProvider_SizeFormatting/1.0_MB
+=== RUN   TestFileMetadataProvider_SizeFormatting/1.0_GB
+--- PASS: TestFileMetadataProvider_SizeFormatting (0.00s)
+    --- PASS: TestFileMetadataProvider_SizeFormatting/100_B (0.00s)
+    --- PASS: TestFileMetadataProvider_SizeFormatting/1.0_KB (0.00s)
+    --- PASS: TestFileMetadataProvider_SizeFormatting/1.0_MB (0.00s)
+    --- PASS: TestFileMetadataProvider_SizeFormatting/1.0_GB (0.00s)
+=== RUN   TestFileMetadataProvider_NonExistentFile
+--- PASS: TestFileMetadataProvider_NonExistentFile (0.00s)
+=== RUN   TestFileSearcher_FindFiles
+=== RUN   TestFileSearcher_FindFiles/find_all_go_files
+=== RUN   TestFileSearcher_FindFiles/find_by_exact_name
+=== RUN   TestFileSearcher_FindFiles/find_with_glob_pattern
+=== RUN   TestFileSearcher_FindFiles/find_by_prefix
+=== RUN   TestFileSearcher_FindFiles/filter_by_extension
+--- PASS: TestFileSearcher_FindFiles (0.01s)
+    --- PASS: TestFileSearcher_FindFiles/find_all_go_files (0.00s)
+    --- PASS: TestFileSearcher_FindFiles/find_by_exact_name (0.00s)
+    --- PASS: TestFileSearcher_FindFiles/find_with_glob_pattern (0.00s)
+    --- PASS: TestFileSearcher_FindFiles/find_by_prefix (0.00s)
+    --- PASS: TestFileSearcher_FindFiles/filter_by_extension (0.00s)
+=== RUN   TestFileSearcher_ListAllFiles
+--- PASS: TestFileSearcher_ListAllFiles (0.00s)
+=== RUN   TestFileSearcher_GetFilesByExtension
+=== RUN   TestFileSearcher_GetFilesByExtension/find_go_files
+=== RUN   TestFileSearcher_GetFilesByExtension/find_markdown_files
+=== RUN   TestFileSearcher_GetFilesByExtension/find_multiple_extensions
+--- PASS: TestFileSearcher_GetFilesByExtension (0.00s)
+    --- PASS: TestFileSearcher_GetFilesByExtension/find_go_files (0.00s)
+    --- PASS: TestFileSearcher_GetFilesByExtension/find_markdown_files (0.00s)
+    --- PASS: TestFileSearcher_GetFilesByExtension/find_multiple_extensions (0.00s)
+=== RUN   TestFileSearcher_CaseInsensitive
+--- PASS: TestFileSearcher_CaseInsensitive (0.00s)
+=== RUN   TestFileSearcher_MatchScoring
+    file_search_test.go:245: FindFiles() exact match score 1.000000 should be higher than 1.000000
+--- FAIL: TestFileSearcher_MatchScoring (0.00s)
+=== RUN   TestGitStash_StashChanges
+    git_stash_test.go:9: Stash operations require more complex worktree setup - skipping for now
+--- SKIP: TestGitStash_StashChanges (0.00s)
+=== RUN   TestGitStash_ListStashes
+    git_stash_test.go:43: Stash operations require more complex worktree setup - skipping for now
+--- SKIP: TestGitStash_ListStashes (0.00s)
+=== RUN   TestGitStash_StashOptions
+=== RUN   TestGitStash_StashOptions/with_custom_message
+=== RUN   TestGitStash_StashOptions/include_untracked
+=== RUN   TestGitStash_StashOptions/keep_index
+--- PASS: TestGitStash_StashOptions (0.00s)
+    --- PASS: TestGitStash_StashOptions/with_custom_message (0.00s)
+    --- PASS: TestGitStash_StashOptions/include_untracked (0.00s)
+    --- PASS: TestGitStash_StashOptions/keep_index (0.00s)
+=== RUN   TestGitStash_StashEntry
+--- PASS: TestGitStash_StashEntry (0.00s)
+=== RUN   TestGitStash_ApplyStash
+    git_stash_test.go:123: Stash apply requires full worktree simulation - skipping for now
+--- SKIP: TestGitStash_ApplyStash (0.00s)
+=== RUN   TestGitStash_PopStash
+    git_stash_test.go:127: Stash pop requires full worktree simulation - skipping for now
+--- SKIP: TestGitStash_PopStash (0.00s)
+=== RUN   TestGitStash_DropStash
+    git_stash_test.go:131: Stash drop requires full stash setup - skipping for now
+--- SKIP: TestGitStash_DropStash (0.00s)
+=== RUN   TestGitStash_ClearStashes
+    git_stash_test.go:135: Stash clear requires full stash setup - skipping for now
+--- SKIP: TestGitStash_ClearStashes (0.00s)
+=== RUN   TestGitWriter_CreateBranch
+--- PASS: TestGitWriter_CreateBranch (0.00s)
+=== RUN   TestGitWriter_CreateBranch_WithCheckout
+--- PASS: TestGitWriter_CreateBranch_WithCheckout (0.00s)
+=== RUN   TestGitWriter_CreateBranch_AlreadyExists
+--- PASS: TestGitWriter_CreateBranch_AlreadyExists (0.00s)
+=== RUN   TestGitWriter_CreateBranch_WithForce
+--- PASS: TestGitWriter_CreateBranch_WithForce (0.00s)
+=== RUN   TestGitWriter_DeleteBranch
+--- PASS: TestGitWriter_DeleteBranch (0.00s)
+=== RUN   TestGitWriter_DeleteBranch_CurrentBranch
+--- PASS: TestGitWriter_DeleteBranch_CurrentBranch (0.00s)
+=== RUN   TestGrepSearcher_BasicSearch
+--- PASS: TestGrepSearcher_BasicSearch (0.00s)
+=== RUN   TestGrepSearcher_RegexSearch
+--- PASS: TestGrepSearcher_RegexSearch (0.00s)
+=== RUN   TestGrepSearcher_CaseInsensitive
+--- PASS: TestGrepSearcher_CaseInsensitive (0.00s)
+=== RUN   TestGrepSearcher_ContextLines
+--- PASS: TestGrepSearcher_ContextLines (0.00s)
+=== RUN   TestGrepSearcher_FileFiltering
+--- PASS: TestGrepSearcher_FileFiltering (0.00s)
+=== RUN   TestGrepSearcher_ExcludePatterns
+--- PASS: TestGrepSearcher_ExcludePatterns (0.00s)
+=== RUN   TestGrepSearcher_GrepCount
+--- PASS: TestGrepSearcher_GrepCount (0.00s)
+=== RUN   TestGrepSearcher_GrepFiles
+--- PASS: TestGrepSearcher_GrepFiles (0.00s)
+=== RUN   TestGrepSearcher_WholeWord
+--- PASS: TestGrepSearcher_WholeWord (0.00s)
+=== RUN   TestGrepSearcher_InvertMatch
+--- PASS: TestGrepSearcher_InvertMatch (0.00s)
+=== RUN   TestRecentFilesTracker_GetRecentFiles
+    recent_files_test.go:41: GetRecentFiles() got 0 files, want at least 3
+--- FAIL: TestRecentFilesTracker_GetRecentFiles (0.21s)
+panic: runtime error: index out of range [0] with length 0 [recovered, repanicked]
+
+goroutine 80 [running]:
+testing.tRunner.func1.2({0x1050d53a0, 0x140000251e8})
+	/opt/homebrew/Cellar/go/1.25.3/libexec/src/testing/testing.go:1872 +0x190
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go/1.25.3/libexec/src/testing/testing.go:1875 +0x31c
+panic({0x1050d53a0?, 0x140000251e8?})
+	/opt/homebrew/Cellar/go/1.25.3/libexec/src/runtime/panic.go:783 +0x120
+github.com/go-git/go-git/v6/ai.TestRecentFilesTracker_GetRecentFiles(0x14000512e00)
+	/Users/m4air/Documents/go-git/ai/recent_files_test.go:54 +0x44c
+testing.tRunner(0x14000512e00, 0x105106de0)
+	/opt/homebrew/Cellar/go/1.25.3/libexec/src/testing/testing.go:1934 +0xc8
+created by testing.(*T).Run in goroutine 1
+	/opt/homebrew/Cellar/go/1.25.3/libexec/src/testing/testing.go:1997 +0x364
+FAIL	github.com/go-git/go-git/v6/ai	0.814s
+FAIL
