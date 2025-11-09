@@ -6,14 +6,30 @@ Complete API documentation for `github.com/go-git/go-git/v6/ai`
 
 ## Table of Contents
 
+### Search & Discovery
 - [Keyword Search API](#keyword-search-api)
 - [Semantic Search API](#semantic-search-api)
+- [File Search API](#file-search-api) ⭐ NEW
+- [Grep Search API](#grep-search-api) ⭐ NEW
+- [Symbol Analysis API](#symbol-analysis-api)
+
+### Context & Intelligence
+- [Workspace Stats API](#workspace-stats-api) ⭐ NEW
+- [Recent Files API](#recent-files-api) ⭐ NEW
+- [File Metadata API](#file-metadata-api) ⭐ NEW
+
+### Code Modification
+- [File Modification API](#file-modification-api)
+- [Branch Operations API](#branch-operations-api) ⭐ NEW
+- [Git Stash API](#git-stash-api) ⭐ NEW
+- [Git Operations API](#git-operations-api)
+
+### Advanced
 - [Code Embedding API](#code-embedding-api)
 - [Indexing Management](#indexing-management)
-- [Symbol Analysis API](#symbol-analysis-api)
-- [File Modification API](#file-modification-api)
-- [Git Operations API](#git-operations-api)
 - [Security Scanning API](#security-scanning-api)
+
+### Reference
 - [Types Reference](#types-reference)
 
 ---
