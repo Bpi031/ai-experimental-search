@@ -205,3 +205,239 @@ func (v *VectorStoreRetriever) RetrieveStreaming(ctx context.Context, query stri
     return v.repo.Provider.SemanticSearchStreaming(ctx, v.repo.Path, query, topK, rerank, emit)
 }
 
+// ===========================
+// Git Operations (Read)
+// ===========================
+
+// GetDiff retrieves diffs between commits or working tree
+func (r *Repository) GetDiff(ctx context.Context, opts DiffOptions) ([]DiffResult, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	gitOps := NewGitOperations(repo)
+	return gitOps.GetDiff(ctx, opts)
+}
+
+// GetBlame retrieves line-by-line authorship information
+func (r *Repository) GetBlame(ctx context.Context, opts BlameOptions) ([]BlameLine, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	gitOps := NewGitOperations(repo)
+	return gitOps.GetBlame(ctx, opts)
+}
+
+// GetHistory retrieves commit history with optional filtering
+func (r *Repository) GetHistory(ctx context.Context, opts HistoryOptions) ([]CommitInfo, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	gitOps := NewGitOperations(repo)
+	return gitOps.GetHistory(ctx, opts)
+}
+
+// ===========================
+// Symbol Analysis
+// ===========================
+
+// GetSymbols extracts code symbols (functions, types, etc.) from Go files
+func (r *Repository) GetSymbols(ctx context.Context, opts GetSymbolsOptions) ([]Symbol, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	analyzer := NewSymbolAnalyzer(repo)
+	return analyzer.GetSymbols(ctx, opts)
+}
+
+// FindReferences finds all references to a symbol across the codebase
+func (r *Repository) FindReferences(ctx context.Context, opts FindReferencesOptions) ([]Reference, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	analyzer := NewSymbolAnalyzer(repo)
+	return analyzer.FindReferences(ctx, opts)
+}
+
+// GetDefinition finds the definition of a symbol
+func (r *Repository) GetDefinition(ctx context.Context, symbolName string) (*Symbol, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	analyzer := NewSymbolAnalyzer(repo)
+	return analyzer.GetDefinition(ctx, symbolName)
+}
+
+// ===========================
+// File Modification
+// ===========================
+
+// EditFile modifies an existing file or creates a new one
+// Returns a FileOperation that may need confirmation before applying
+func (r *Repository) EditFile(ctx context.Context, opts EditFileOptions) (*FileOperation, error) {
+	modifier := NewFileModifier(r.Path)
+	return modifier.EditFile(ctx, opts)
+}
+
+// CreateFile creates a new file
+func (r *Repository) CreateFile(ctx context.Context, opts CreateFileOptions) (*FileOperation, error) {
+	modifier := NewFileModifier(r.Path)
+	return modifier.CreateFile(ctx, opts)
+}
+
+// DeleteFile deletes a file
+func (r *Repository) DeleteFile(ctx context.Context, opts DeleteFileOptions) (*FileOperation, error) {
+	modifier := NewFileModifier(r.Path)
+	return modifier.DeleteFile(ctx, opts)
+}
+
+// ApplyFileOperation executes a pending file operation (after confirmation)
+func (r *Repository) ApplyFileOperation(op *FileOperation) error {
+	modifier := NewFileModifier(r.Path)
+	modifier.RequireConfirmation = false
+	return modifier.ApplyOperation(op)
+}
+
+// ===========================
+// Git Write Operations
+// ===========================
+
+// CommitChanges creates a new commit with AI-generated message
+func (r *Repository) CommitChanges(ctx context.Context, opts CommitOptions) (*CommitResult, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	writer := NewGitWriter(repo)
+	return writer.CommitChanges(ctx, opts)
+}
+
+// ApplyCommit executes a pending commit (after confirmation)
+func (r *Repository) ApplyCommit(result *CommitResult, opts CommitOptions) error {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return err
+	}
+	writer := NewGitWriter(repo)
+	writer.RequireConfirmation = false
+	return writer.ApplyCommit(result, opts)
+}
+
+// CreateBranch creates a new branch
+func (r *Repository) CreateBranch(ctx context.Context, opts BranchOptions) (*BranchResult, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	writer := NewGitWriter(repo)
+	return writer.CreateBranch(ctx, opts)
+}
+
+// ApplyBranchCreate executes a pending branch creation (after confirmation)
+func (r *Repository) ApplyBranchCreate(result *BranchResult, opts BranchOptions) error {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return err
+	}
+	writer := NewGitWriter(repo)
+	writer.RequireConfirmation = false
+	return writer.ApplyBranchCreate(result, opts)
+}
+
+// DeleteBranch deletes a branch
+func (r *Repository) DeleteBranch(ctx context.Context, branchName string, force bool) error {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return err
+	}
+	writer := NewGitWriter(repo)
+	return writer.DeleteBranch(ctx, branchName, force)
+}
+
+// ===========================
+// Security Scanning
+// ===========================
+
+// ScanForSecrets scans repository for secrets and credentials
+func (r *Repository) ScanForSecrets(ctx context.Context, opts ScanOptions) (*ScanResult, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	scanner := NewSecurityScanner(repo)
+	return scanner.ScanForSecrets(ctx, opts)
+}
+
+// AnalyzeDependencies analyzes project dependencies
+func (r *Repository) AnalyzeDependencies(ctx context.Context) ([]DependencyInfo, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	scanner := NewSecurityScanner(repo)
+	return scanner.AnalyzeDependencies(ctx)
+}
+
+// ===========================
+// Convenience Methods
+// ===========================
+
+// QuickCommit is a shorthand for add all + commit with AI message
+func (r *Repository) QuickCommit(ctx context.Context, message string) (*CommitResult, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	writer := NewGitWriter(repo)
+	writer.RequireConfirmation = false // Auto-apply for convenience method
+	
+	opts := CommitOptions{
+		Message: message,
+		// Files empty = add all modified files
+	}
+	
+	return writer.CommitChanges(ctx, opts)
+}
+
+// QuickHistory retrieves recent commit history (last 10 commits)
+func (r *Repository) QuickHistory(ctx context.Context) ([]CommitInfo, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	gitOps := NewGitOperations(repo)
+	return gitOps.GetHistory(ctx, HistoryOptions{
+		MaxCount: 10,
+	})
+}
+
+// QuickSecurityScan performs a quick security scan for high-severity issues
+func (r *Repository) QuickSecurityScan(ctx context.Context) (*ScanResult, error) {
+	repo, err := gogit.PlainOpen(r.Path)
+	if err != nil {
+		return nil, err
+	}
+	scanner := NewSecurityScanner(repo)
+	result, err := scanner.ScanForSecrets(ctx, ScanOptions{})
+	if err != nil {
+		return nil, err
+	}
+	
+	// Filter to high severity only for quick scan
+	var highSeverityFindings []SecretFinding
+	for _, finding := range result.Findings {
+		if finding.Severity == "high" {
+			highSeverityFindings = append(highSeverityFindings, finding)
+		}
+	}
+	result.Findings = highSeverityFindings
+	result.SecretsFound = len(highSeverityFindings)
+	
+	return result, nil
+}
+
