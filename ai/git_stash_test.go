@@ -6,8 +6,6 @@ import (
 )
 
 func TestGitStash_StashChanges(t *testing.T) {
-	t.Skip("Stash operations require more complex worktree setup - skipping for now")
-	
 	repo := mustCreateTempRepo(t)
 	defer cleanupRepo(t, repo)
 
@@ -40,8 +38,6 @@ func TestGitStash_StashChanges(t *testing.T) {
 }
 
 func TestGitStash_ListStashes(t *testing.T) {
-	t.Skip("Stash operations require more complex worktree setup - skipping for now")
-	
 	repo := mustCreateTempRepo(t)
 	defer cleanupRepo(t, repo)
 

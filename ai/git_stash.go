@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/go-git/go-git/v6"
@@ -106,29 +107,66 @@ func (gs *GitStash) StashChanges(ctx context.Context, opts StashOptions) (*Stash
 		return result, nil
 	}
 
-	// Actually create the stash
-	// Note: go-git doesn't have native stash support, so we simulate it
-	// by creating a commit on a special stash ref
-	commit, err := gs.createStashCommit(w, message, branchName, filesStashed)
+	// Get current HEAD commit
+	headCommit, err := gs.repo.CommitObject(head.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create stash: %w", err)
+		return nil, fmt.Errorf("failed to get HEAD commit: %w", err)
+	}
+
+	// Stage all changes
+	err = w.AddGlob(".")
+	if err != nil {
+		return nil, fmt.Errorf("failed to stage changes: %w", err)
+	}
+
+	// Create a temporary commit to capture the stashed state
+	stashHash, err := w.Commit(message, &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Go-Git Stash",
+			Email: "stash@go-git",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stash commit: %w", err)
+	}
+
+	// Get the stash commit
+	stashCommit, err := gs.repo.CommitObject(stashHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stash commit: %w", err)
+	}
+
+	// Update refs/stash reference to point to the stash commit
+	stashRef := plumbing.NewHashReference(plumbing.ReferenceName("refs/stash"), stashHash)
+	err = gs.repo.Storer.SetReference(stashRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update stash reference: %w", err)
 	}
 
 	result.Entry = &StashEntry{
+		Index:        0,
 		Message:      message,
-		Hash:         commit.Hash.String(),
-		ShortHash:    commit.Hash.String()[:7],
-		CreatedAt:    commit.Author.When,
-		Author:       commit.Author.Name,
-		Email:        commit.Author.Email,
+		Hash:         stashHash.String(),
+		ShortHash:    stashHash.String()[:7],
+		CreatedAt:    stashCommit.Author.When,
+		Author:       stashCommit.Author.Name,
+		Email:        stashCommit.Author.Email,
 		BranchName:   branchName,
 		FilesStashed: filesStashed,
 	}
 
-	// Reset working directory
+	// Reset HEAD back to original commit (but keep the stash ref)
+	err = gs.repo.Storer.SetReference(plumbing.NewHashReference(head.Name(), headCommit.Hash))
+	if err != nil {
+		return nil, fmt.Errorf("failed to reset HEAD: %w", err)
+	}
+
+	// Reset working directory to clean state
 	if !opts.KeepIndex {
 		err = w.Reset(&git.ResetOptions{
-			Mode: git.HardReset,
+			Mode:   git.HardReset,
+			Commit: headCommit.Hash,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to reset working directory: %w", err)
@@ -138,78 +176,52 @@ func (gs *GitStash) StashChanges(ctx context.Context, opts StashOptions) (*Stash
 	return result, nil
 }
 
-// createStashCommit creates a commit representing the stash.
-func (gs *GitStash) createStashCommit(w *git.Worktree, message, branch string, files []string) (*object.Commit, error) {
-	// Add all changes
-	if len(files) == 0 {
-		_, err := w.Add(".")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		for _, file := range files {
-			_, err := w.Add(file)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Create commit
-	commitHash, err := w.Commit(message, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Go-Git Stash",
-			Email: "stash@go-git",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return gs.repo.CommitObject(commitHash)
-}
-
 // ListStashes returns all stash entries.
 func (gs *GitStash) ListStashes(ctx context.Context) ([]StashEntry, error) {
 	stashes := []StashEntry{}
 
-	// Get stash references
-	// Note: This is a simplified implementation
-	// Real stash would be stored in refs/stash
-	refs, err := gs.repo.References()
+	// Try to get the stash reference
+	stashRef, err := gs.repo.Reference(plumbing.ReferenceName("refs/stash"), true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get references: %w", err)
-	}
-
-	index := 0
-	err = refs.ForEach(func(ref *plumbing.Reference) error {
-		// Look for stash references (refs/stash or custom refs)
-		if ref.Name().String() == "refs/stash" || 
-		   (ref.Name().IsBranch() && len(ref.Name().Short()) > 6 && ref.Name().Short()[:6] == "stash/") {
-			
-			commit, err := gs.repo.CommitObject(ref.Hash())
-			if err != nil {
-				return nil
-			}
-
-			stashes = append(stashes, StashEntry{
-				Index:     index,
-				Message:   commit.Message,
-				Hash:      commit.Hash.String(),
-				ShortHash: commit.Hash.String()[:7],
-				CreatedAt: commit.Author.When,
-				Author:    commit.Author.Name,
-				Email:     commit.Author.Email,
-			})
-			index++
+		// No stash exists yet
+		if err == plumbing.ErrReferenceNotFound {
+			return stashes, nil
 		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to list stashes: %w", err)
+		return nil, fmt.Errorf("failed to get stash reference: %w", err)
 	}
+
+	// Get the stash commit
+	commit, err := gs.repo.CommitObject(stashRef.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stash commit: %w", err)
+	}
+
+	// Parse branch name from commit message
+	branchName := ""
+	if len(commit.Message) > 7 && commit.Message[:7] == "WIP on " {
+		// Extract branch name from "WIP on branch"
+		branchName = commit.Message[7:]
+		if idx := len(branchName); idx > 0 {
+			// Remove any trailing text after branch name
+			for i, ch := range branchName {
+				if ch == ':' || ch == '\n' {
+					branchName = branchName[:i]
+					break
+				}
+			}
+		}
+	}
+
+	stashes = append(stashes, StashEntry{
+		Index:      0,
+		Message:    commit.Message,
+		Hash:       commit.Hash.String(),
+		ShortHash:  commit.Hash.String()[:7],
+		CreatedAt:  commit.Author.When,
+		Author:     commit.Author.Name,
+		Email:      commit.Author.Email,
+		BranchName: branchName,
+	})
 
 	return stashes, nil
 }
@@ -240,18 +252,34 @@ func (gs *GitStash) ApplyStash(ctx context.Context, index int, drop bool) error 
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	// Checkout the stash commit files
-	// Note: This is simplified - real git stash apply is more complex
+	// Get the stash tree
 	tree, err := commit.Tree()
 	if err != nil {
 		return fmt.Errorf("failed to get stash tree: %w", err)
 	}
 
-	err = w.Checkout(&git.CheckoutOptions{
-		Hash: tree.Hash,
+	// Apply stash by restoring files from the stash tree
+	err = tree.Files().ForEach(func(f *object.File) error {
+		// Read file content from stash
+		reader, err := f.Reader()
+		if err != nil {
+			return err
+		}
+		defer reader.Close()
+
+		// Write to worktree
+		file, err := w.Filesystem.Create(f.Name)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// Copy content using io.Copy
+		_, err = io.Copy(file, reader)
+		return err
 	})
 	if err != nil {
-		return fmt.Errorf("failed to apply stash: %w", err)
+		return fmt.Errorf("failed to apply stash files: %w", err)
 	}
 
 	// Drop stash if requested
@@ -278,18 +306,16 @@ func (gs *GitStash) DropStash(ctx context.Context, index int) error {
 		return fmt.Errorf("invalid stash index: %d", index)
 	}
 
-	stash := stashes[index]
+	// For now, we only support a single stash (index 0)
+	// Full stash reflog support would require more complex implementation
+	if index != 0 {
+		return fmt.Errorf("only dropping the most recent stash (index 0) is supported")
+	}
 
 	// Remove the stash reference
-	// Note: This is simplified
-	refName := plumbing.NewBranchReferenceName(fmt.Sprintf("stash/%s", stash.ShortHash))
-	err = gs.repo.Storer.RemoveReference(refName)
+	err = gs.repo.Storer.RemoveReference(plumbing.ReferenceName("refs/stash"))
 	if err != nil {
-		// Try the standard stash ref
-		err = gs.repo.Storer.RemoveReference(plumbing.ReferenceName("refs/stash"))
-		if err != nil {
-			return fmt.Errorf("failed to drop stash: %w", err)
-		}
+		return fmt.Errorf("failed to drop stash: %w", err)
 	}
 
 	return nil
@@ -297,6 +323,21 @@ func (gs *GitStash) DropStash(ctx context.Context, index int) error {
 
 // ClearStashes removes all stash entries.
 func (gs *GitStash) ClearStashes(ctx context.Context) error {
+	// Simply remove the stash reference (simplified implementation)
+	err := gs.repo.Storer.RemoveReference(plumbing.ReferenceName("refs/stash"))
+	if err != nil {
+		// If no stash exists, that's fine
+		if err == plumbing.ErrReferenceNotFound {
+			return nil
+		}
+		return fmt.Errorf("failed to clear stashes: %w", err)
+	}
+
+	return nil
+}
+
+// clearStashesOld is the old implementation (kept for reference)
+func (gs *GitStash) clearStashesOld(ctx context.Context) error {
 	stashes, err := gs.ListStashes(ctx)
 	if err != nil {
 		return err
