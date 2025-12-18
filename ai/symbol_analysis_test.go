@@ -566,3 +566,101 @@ func TestSymbolAnalyzer_EmptyFile(t *testing.T) {
 		}
 	}
 }
+
+func TestSymbolAnalyzer_GetSymbolsWithCalls(t *testing.T) {
+	repo := mustCreateTempRepo(t)
+	
+	content := `package main
+
+import "fmt"
+
+func Helper() {
+    fmt.Println("helper")
+}
+
+func MainFunc() {
+    Helper()
+    fmt.Printf("test")
+}
+`
+	mustWrite(t, repo, "calls.go", content)
+	mustCommitAll(t, repo, "Add calls file")
+	
+	analyzer := NewSymbolAnalyzer(repo)
+	symbols, err := analyzer.GetSymbols(context.Background(), GetSymbolsOptions{
+		FilePath: "calls.go",
+	})
+	if err != nil {
+		t.Fatalf("GetSymbols failed: %v", err)
+	}
+	
+	var mainFunc *Symbol
+	for i := range symbols {
+		if symbols[i].Name == "MainFunc" {
+			mainFunc = &symbols[i]
+			break
+		}
+	}
+	
+	if mainFunc == nil {
+		t.Fatal("MainFunc not found")
+	}
+	
+	foundHelper := false
+	foundPrintf := false
+	
+	for _, call := range mainFunc.Calls {
+		if call == "Helper" {
+			foundHelper = true
+		}
+		if call == "fmt.Printf" {
+			foundPrintf = true
+		}
+	}
+	
+	if !foundHelper {
+		t.Error("MainFunc should call Helper")
+	}
+	if !foundPrintf {
+		t.Error("MainFunc should call fmt.Printf")
+	}
+}
+
+func TestSymbolAnalyzer_EndLine(t *testing.T) {
+	repo := mustCreateTempRepo(t)
+	
+	content := `package main
+
+func MultiLine() {
+	// Line 4
+	// Line 5
+}
+`
+	mustWrite(t, repo, "multiline.go", content)
+	mustCommitAll(t, repo, "Add multiline file")
+	
+	analyzer := NewSymbolAnalyzer(repo)
+	symbols, err := analyzer.GetSymbols(context.Background(), GetSymbolsOptions{
+		FilePath: "multiline.go",
+	})
+	if err != nil {
+		t.Fatalf("GetSymbols failed: %v", err)
+	}
+	
+	if len(symbols) != 1 {
+		t.Fatalf("Expected 1 symbol, got %d", len(symbols))
+	}
+	
+	sym := symbols[0]
+	if sym.Name != "MultiLine" {
+		t.Errorf("Expected symbol MultiLine, got %s", sym.Name)
+	}
+	
+	if sym.Line != 3 {
+		t.Errorf("Expected start line 3, got %d", sym.Line)
+	}
+	
+	if sym.EndLine != 6 {
+		t.Errorf("Expected end line 6, got %d", sym.EndLine)
+	}
+}

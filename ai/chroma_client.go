@@ -172,3 +172,30 @@ func (c *ChromaClient) Query(ctx context.Context, collectionID string, queryEmbe
 	}
 	return out, nil
 }
+
+type GetResult struct {
+	IDs       []string         `json:"ids"`
+	Documents []string         `json:"documents"`
+	Metadatas []map[string]any `json:"metadatas"`
+}
+
+func (c *ChromaClient) Get(ctx context.Context, collectionID string, where map[string]any) (GetResult, error) {
+	body, _ := json.Marshal(map[string]any{
+		"where": where,
+	})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/v1/collections/"+collectionID+"/get", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return GetResult{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return GetResult{}, fmt.Errorf("chroma get failed: %s", resp.Status)
+	}
+	var out GetResult
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return GetResult{}, err
+	}
+	return out, nil
+}

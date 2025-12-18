@@ -2,6 +2,7 @@ package ai
 
 import (
     "bufio"
+    "bytes"
     "context"
     "crypto/sha1"
     "encoding/hex"
@@ -63,8 +64,10 @@ func (h *HybridProvider) IndexRepository(ctx context.Context, repoPath string) e
         defer r.Close()
         // Naive text read with size cap
         const maxFileBytes = 2 * 1024 * 1024
-        lr := io.LimitReader(r, maxFileBytes)
-        up, err := h.buildChunksForFile(ctx, repoPath, commit.Hash.String(), f, lr)
+        content, err := io.ReadAll(io.LimitReader(r, maxFileBytes))
+        if err != nil { return nil }
+
+        up, err := h.buildChunksForFile(ctx, repoPath, commit.Hash.String(), f, content)
         if err == nil && len(up) > 0 {
             upserts = append(upserts, up...)
             // Batch flush to keep memory bounded
@@ -82,9 +85,95 @@ func (h *HybridProvider) IndexRepository(ctx context.Context, repoPath string) e
     return nil
 }
 
-func (h *HybridProvider) buildChunksForFile(ctx context.Context, repoPath, commitHash string, f *object.File, r io.Reader) ([]UpsertItem, error) {
+func (h *HybridProvider) buildChunksForFile(ctx context.Context, repoPath, commitHash string, f *object.File, content []byte) ([]UpsertItem, error) {
+    if strings.HasSuffix(f.Name, ".go") {
+        return h.buildGoChunks(ctx, repoPath, commitHash, f, content)
+    }
+    return h.buildNaiveChunks(ctx, repoPath, commitHash, f, content)
+}
+
+func (h *HybridProvider) buildGoChunks(ctx context.Context, repoPath, commitHash string, f *object.File, content []byte) ([]UpsertItem, error) {
+    analyzer := NewSymbolAnalyzer(nil)
+    symbols, err := analyzer.ExtractSymbolsFromContent(f.Name, content, GetSymbolsOptions{IncludeDocs: true})
+    if err != nil || len(symbols) == 0 {
+        return h.buildNaiveChunks(ctx, repoPath, commitHash, f, content)
+    }
+
+    var chunks []string
+    var starts []int
+    var ends []int
+    var metas []map[string]any
+
+    lines := strings.Split(string(content), "\n")
+
+    for _, sym := range symbols {
+        if sym.Type == SymbolTypeImport {
+            continue
+        }
+
+        start := sym.Line - 1
+        end := sym.EndLine
+        if start < 0 {
+            start = 0
+        }
+        if end > len(lines) {
+            end = len(lines)
+        }
+
+        chunkContent := strings.Join(lines[start:end], "\n")
+        if strings.TrimSpace(chunkContent) == "" {
+            continue
+        }
+
+        chunks = append(chunks, chunkContent)
+        starts = append(starts, sym.Line)
+        ends = append(ends, sym.EndLine)
+
+        meta := map[string]any{
+            "repo_path":   repoPath,
+            "commit_hash": commitHash,
+            "file_path":   f.Name,
+            "start_line":  sym.Line,
+            "end_line":    sym.EndLine,
+            "blob_hash":   f.Hash.String(),
+            "language":    "go",
+            "created_at":  time.Now().UTC().Format(time.RFC3339Nano),
+            "symbol_name": sym.Name,
+            "symbol_type": string(sym.Type),
+        }
+
+        if len(sym.Calls) > 0 {
+            meta["calls"] = strings.Join(sym.Calls, ",")
+        }
+
+        metas = append(metas, meta)
+    }
+
+    if len(chunks) == 0 {
+        return h.buildNaiveChunks(ctx, repoPath, commitHash, f, content)
+    }
+
+    embs, err := h.tei.Embed(ctx, chunks)
+    if err != nil {
+        return nil, err
+    }
+
+    items := make([]UpsertItem, len(chunks))
+    for i, ch := range chunks {
+        id := chunkID(commitHash, f.Name, starts[i], ends[i])
+        items[i] = UpsertItem{
+            ID:        id,
+            Embedding: embs[i],
+            Document:  ch,
+            Metadata:  metas[i],
+        }
+    }
+    return items, nil
+}
+
+func (h *HybridProvider) buildNaiveChunks(ctx context.Context, repoPath, commitHash string, f *object.File, content []byte) ([]UpsertItem, error) {
     // Read lines and group into chunks ~1000 chars
-    scanner := bufio.NewScanner(r)
+    scanner := bufio.NewScanner(bytes.NewReader(content))
     // Increase buffer for long lines
     buf := make([]byte, 0, 256*1024)
     scanner.Buffer(buf, 1024*1024)
@@ -238,6 +327,88 @@ func (h *HybridProvider) SemanticSearchStreaming(ctx context.Context, repoPath s
     }
     
     return nil
+}
+
+// RelationalSearch performs semantic search and then fetches related symbols (e.g. called functions).
+func (h *HybridProvider) RelationalSearch(ctx context.Context, repoPath, query string, topK int) ([]SearchResult, error) {
+	// 1. Perform standard semantic search
+	results, err := h.SemanticSearch(ctx, repoPath, query, topK, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Collect all called symbols
+	calledSymbols := make(map[string]bool)
+	for _, res := range results {
+		if calls, ok := res.Chunk.Meta["calls"]; ok && calls != "" {
+			for _, call := range strings.Split(calls, ",") {
+				calledSymbols[strings.TrimSpace(call)] = true
+			}
+		}
+	}
+
+	if len(calledSymbols) == 0 {
+		return results, nil
+	}
+
+	// 3. Fetch called symbols
+	var symbolsList []string
+	for sym := range calledSymbols {
+		symbolsList = append(symbolsList, sym)
+	}
+
+	// Limit to avoid huge queries
+	if len(symbolsList) > 20 {
+		symbolsList = symbolsList[:20]
+	}
+
+	where := map[string]any{
+		"$and": []map[string]any{
+			{"symbol_name": map[string]any{"$in": symbolsList}},
+			{"repo_path": repoPath},
+		},
+	}
+
+	getResult, err := h.chroma.Get(ctx, h.collectionID, where)
+	if err != nil {
+		// If get fails, just return original results
+		return results, nil
+	}
+
+	// 4. Convert GetResult to SearchResult and append
+	for i, id := range getResult.IDs {
+		// Check if already in results
+		exists := false
+		for _, r := range results {
+			if r.Chunk.ID == id {
+				exists = true
+				break
+			}
+		}
+		if exists {
+			continue
+		}
+
+		meta := getResult.Metadatas[i]
+		chunk := DocumentChunk{
+			ID:         id,
+			RepoPath:   strMeta(meta, "repo_path"),
+			CommitHash: strMeta(meta, "commit_hash"),
+			FilePath:   strMeta(meta, "file_path"),
+			StartLine:  intMeta(meta, "start_line"),
+			EndLine:    intMeta(meta, "end_line"),
+			BlobHash:   strMeta(meta, "blob_hash"),
+			Language:   strMeta(meta, "language"),
+			Content:    getResult.Documents[i],
+			Meta:       convertMeta(meta),
+			CreatedAt:  time.Now().UTC(),
+		}
+
+		// Add as related context with lower score
+		results = append(results, SearchResult{Chunk: chunk, Score: 0.5})
+	}
+
+	return results, nil
 }
 
 func safeCollectionName(repoPath string) string {

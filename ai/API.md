@@ -9,6 +9,7 @@ Complete API documentation for `github.com/go-git/go-git/v6/ai`
 ### Search & Discovery
 - [Keyword Search API](#keyword-search-api)
 - [Semantic Search API](#semantic-search-api)
+- [Relational Search API](#relational-search-api) ⭐ NEW
 - [File Search API](#file-search-api) ⭐ NEW
 - [Grep Search API](#grep-search-api) ⭐ NEW
 - [Symbol Analysis API](#symbol-analysis-api)
@@ -1344,6 +1345,32 @@ for typ, deps := range byType {
     fmt.Printf("\n%s dependencies: %d\n", typ, len(deps))
 }
 ```
+
+---
+
+## Relational Search API
+
+### RelationalSearchRepo
+
+Performs semantic search and automatically fetches related code (e.g., called functions) to provide a complete context graph. This mimics the behavior of advanced AI editors like Cursor.
+
+```go
+func RelationalSearchRepo(
+    ctx context.Context,
+    repoPath string,
+    query string,
+    topK int,
+) ([]SearchResult, error)
+```
+
+**Parameters:**
+- `ctx` - Context
+- `repoPath` - Path to repository
+- `query` - Natural language query
+- `topK` - Number of primary results
+
+**Returns:**
+- `[]SearchResult` - Primary results + related context chunks (with lower scores)
 
 ---
 

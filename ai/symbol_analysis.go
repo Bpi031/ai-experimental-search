@@ -43,10 +43,12 @@ type Symbol struct {
 	Type       SymbolType
 	FilePath   string
 	Line       int
+	EndLine    int      // End line of the symbol
 	Column     int
 	Signature  string
 	DocComment string
-	Receiver   string // For methods
+	Receiver   string   // For methods
+	Calls      []string // Functions called by this symbol
 }
 
 // GetSymbolsOptions configures symbol extraction
@@ -103,6 +105,16 @@ func (s *SymbolAnalyzer) GetSymbols(ctx context.Context, opts GetSymbolsOptions)
 	return allSymbols, nil
 }
 
+// ExtractSymbolsFromContent extracts symbols from a file content string/byte slice
+func (s *SymbolAnalyzer) ExtractSymbolsFromContent(filename string, content []byte, opts GetSymbolsOptions) ([]Symbol, error) {
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, filename, content, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	return s.extractSymbols(fset, node, filename, opts), nil
+}
+
 func (s *SymbolAnalyzer) extractSymbols(fset *token.FileSet, node *ast.File, filePath string, opts GetSymbolsOptions) []Symbol {
 	var symbols []Symbol
 	typeFilter := make(map[SymbolType]bool)
@@ -116,6 +128,7 @@ func (s *SymbolAnalyzer) extractSymbols(fset *token.FileSet, node *ast.File, fil
 		}
 
 		pos := fset.Position(n.Pos())
+		endPos := fset.Position(n.End())
 
 		switch decl := n.(type) {
 		case *ast.FuncDecl:
@@ -139,15 +152,19 @@ func (s *SymbolAnalyzer) extractSymbols(fset *token.FileSet, node *ast.File, fil
 					doc = decl.Doc.Text()
 				}
 
+				calls := s.extractCalls(decl.Body)
+
 				symbols = append(symbols, Symbol{
 					Name:       decl.Name.Name,
 					Type:       symType,
 					FilePath:   filePath,
 					Line:       pos.Line,
+					EndLine:    endPos.Line,
 					Column:     pos.Column,
 					Signature:  signature,
 					DocComment: doc,
 					Receiver:   receiver,
+					Calls:      calls,
 				})
 			}
 
@@ -176,6 +193,7 @@ func (s *SymbolAnalyzer) extractSymbols(fset *token.FileSet, node *ast.File, fil
 							Type:       symType,
 							FilePath:   filePath,
 							Line:       pos.Line,
+							EndLine:    endPos.Line,
 							Column:     pos.Column,
 							Signature:  s.Name.Name,
 							DocComment: doc,
@@ -200,6 +218,7 @@ func (s *SymbolAnalyzer) extractSymbols(fset *token.FileSet, node *ast.File, fil
 								Type:       symType,
 								FilePath:   filePath,
 								Line:       pos.Line,
+								EndLine:    endPos.Line,
 								Column:     pos.Column,
 								DocComment: doc,
 							})
@@ -219,6 +238,7 @@ func (s *SymbolAnalyzer) extractSymbols(fset *token.FileSet, node *ast.File, fil
 							Type:     SymbolTypeImport,
 							FilePath: filePath,
 							Line:     pos.Line,
+							EndLine:  endPos.Line,
 							Column:   pos.Column,
 							Signature: importPath,
 						})
@@ -298,6 +318,29 @@ func (s *SymbolAnalyzer) exprToString(expr ast.Expr) string {
 	default:
 		return "unknown"
 	}
+}
+
+func (s *SymbolAnalyzer) extractCalls(body *ast.BlockStmt) []string {
+	if body == nil {
+		return nil
+	}
+
+	calls := make(map[string]bool)
+	ast.Inspect(body, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			name := s.exprToString(call.Fun)
+			if name != "unknown" {
+				calls[name] = true
+			}
+		}
+		return true
+	})
+
+	var result []string
+	for name := range calls {
+		result = append(result, name)
+	}
+	return result
 }
 
 // FindReferencesOptions configures reference search

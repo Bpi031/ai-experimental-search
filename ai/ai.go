@@ -52,3 +52,8 @@ func SemanticSearchRepoStreaming(ctx context.Context, repoPath, query string, to
     return DefaultProvider().SemanticSearchStreaming(ctx, repoPath, query, topK, rerank, emit)
 }
 
+// RelationalSearchRepo performs semantic search and automatically fetches related code (e.g., called functions).
+func RelationalSearchRepo(ctx context.Context, repoPath, query string, topK int) ([]SearchResult, error) {
+    return DefaultProvider().RelationalSearch(ctx, repoPath, query, topK)
+}
+
